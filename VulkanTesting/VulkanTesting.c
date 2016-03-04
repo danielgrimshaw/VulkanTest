@@ -793,6 +793,46 @@ static void init_vk_swapchain(DG_Window *window) {
 	vkGetPhysicalDeviceMemoryProperties(window->gpu, &window->memory_properties);
 }
 
+static void prepare(DG_Window *window) {
+	VkResult err;
+
+	const VkCommandPoolCreateInfo cmd_pool_info = {
+		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		.pNext = NULL,
+		.queueFamilyIndex = window->graphics_queue_node_index,
+		.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+	};
+	err = vkCreateCommandPool(window->device, &cmd_pool_info, NULL,
+		&window->cmd_pool);
+	assert(!err);
+
+	const VkCommandBufferAllocateInfo cmd = {
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		.pNext = NULL,
+		.commandPool = window->cmd_pool,
+		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		.commandBufferCount = 1,
+	};
+	err = vkAllocateCommandBuffers(window->device, &cmd, &window->draw_cmd);
+	assert(!err);
+
+	prepare_buffers(window);
+	prepare_depth(window);
+	prepare_textures(window);
+	prepare_vertices(window);
+	prepare_descriptor_layout(window);
+	prepare_render_pass(window);
+	prepare_pipeline(window);
+
+	prepare_descriptor_pool(window);
+	prepare_descriptor_set(window);
+
+	prepare_framebuffers(window);
+
+	window->prepared = true;
+}
+
+/*
 void vulkanRender(HINSTANCE hInst, HWND hwnd) {
 	const char * extensionNames[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
 
@@ -853,4 +893,4 @@ void vulkanRender(HINSTANCE hInst, HWND hwnd) {
 		//.imageFormat = 
 	};
 }
-
+*/
