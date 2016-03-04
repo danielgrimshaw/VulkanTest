@@ -492,6 +492,307 @@ const char *pLayerPrefix, const char *pMsg, void *pUserData) {
 	return false;
 }
 
+#ifdef _WIN32
+static void run(DG_Window *window) {
+	if (!window->prepared)
+		return;
+	draw(window);
+
+	if (window->depthStencil > 0.99f)
+		window->depthIncrement = -0.001f;
+	if (window->depthStencil < 0.8f)
+		window->depthIncrement = 0.001f;
+
+	window->depthStencil += window->depthIncrement;
+}
+
+// On MS-Windows, make this a global, so it's available to WndProc()
+DG_Window window;
+
+// MS-Windows event handling function:
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	char tmp_str[] = "Vulkan Testing Practice Project";
+
+	switch (uMsg) {
+	case WM_CREATE:
+		return 0;
+	case WM_CLOSE:
+		PostQuitMessage(0);
+		return 0;
+	case WM_PAINT:
+		if (window.prepared) {
+			run(&window);
+			break;
+		}
+	case WM_SIZE:
+		window.width = lParam & 0xffff;
+		window.height = lParam & 0xffff0000 >> 16;
+		resize(&window);
+		break;
+	default:
+		break;
+	}
+	return (DefWindowProc(hWnd, uMsg, wParam, lParam));
+}
+
+static void create_window(DG_Window *window) {
+	WNDCLASSEX win_class;
+
+	// Initialize the window class structure:
+	win_class.cbSize = sizeof(WNDCLASSEX);
+	win_class.style = CS_HREDRAW | CS_VREDRAW;
+	win_class.lpfnWndProc = WndProc;
+	win_class.cbClsExtra = 0;
+	win_class.cbWndExtra = 0;
+	win_class.hInstance = window->connection; // hInstance
+	win_class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	win_class.hCursor = LoadCursor(NULL, IDC_ARROW);
+	win_class.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+	win_class.lpszMenuName = NULL;
+	win_class.lpszClassName = window->name;
+	win_class.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
+	// Register window class:
+	if (!RegisterClassEx(&win_class)) {
+		// It didn't work, so try to give a useful error:
+		printf("Unexpected error trying to start the application!\n");
+		fflush(stdout);
+		exit(1);
+	}
+	// Create window with the registered class:
+	RECT wr = { 0, 0, window->width, window->height };
+	AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
+	window->window = CreateWindowEx(0,
+		window->name,           // class name
+		window->name,           // app name
+		WS_OVERLAPPEDWINDOW | // window style
+		WS_VISIBLE | WS_SYSMENU,
+		100, 100,           // x/y coords
+		wr.right - wr.left, // width
+		wr.bottom - wr.top, // height
+		NULL,               // handle to parent
+		NULL,               // handle to menu
+		window->connection,   // hInstance
+		NULL);              // no extra parameters
+	if (!window->window) {
+		// It didn't work, so try to give a useful error:
+		printf("Cannot create a window in which to draw!\n");
+		fflush(stdout);
+		exit(1);
+	}
+}
+#else  // _WIN32
+
+static void handle_event(DG_Window *window,
+	const xcb_generic_event_t *event) {
+	switch (event->response_type & 0x7f) {
+	case XCB_EXPOSE:
+		draw(window);
+		break;
+	case XCB_CLIENT_MESSAGE:
+		if ((*(xcb_client_message_event_t *)event).data.data32[0] ==
+			(*window->atom_wm_delete_window).atom) {
+			window->quit = true;
+		}
+		break;
+	case XCB_KEY_RELEASE: {
+		const xcb_key_release_event_t *key =
+			(const xcb_key_release_event_t *)event;
+
+		if (key->detail == 0x9)
+			window->quit = true;
+	} break;
+	case XCB_DESTROY_NOTIFY:
+		window->quit = true;
+		break;
+	case XCB_CONFIGURE_NOTIFY: {
+		const xcb_configure_notify_event_t *cfg =
+			(const xcb_configure_notify_event_t *)event;
+		if ((window->width != cfg->width) || (window->height != cfg->height)) {
+			window->width = cfg->width;
+			window->height = cfg->height;
+			resize(window);
+		}
+	} break;
+	default:
+		break;
+	}
+}
+
+static void run(DG_Window *window) {
+	xcb_flush(window->connection);
+
+	while (!window->quit) {
+		xcb_generic_event_t *event;
+
+		event = xcb_poll_for_event(window->connection);
+		if (event) {
+			handle_event(window, event);
+			free(event);
+		}
+
+		window_draw(window);
+
+		if (window->depthStencil > 0.99f)
+			window->depthIncrement = -0.001f;
+		if (window->depthStencil < 0.8f)
+			window->depthIncrement = 0.001f;
+
+		window->depthStencil += window->depthIncrement;
+
+		// Wait for work to finish before updating MVP.
+		vkDeviceWaitIdle(window->device);
+	}
+}
+
+static void create_window(DG_Window *window) {
+	uint32_t value_mask, value_list[32];
+
+	window->window = xcb_generate_id(window->connection);
+
+	value_mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
+	value_list[0] = window->screen->black_pixel;
+	value_list[1] = XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_EXPOSURE |
+		XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+
+	xcb_create_window(window->connection, XCB_COPY_FROM_PARENT, window->window,
+		window->screen->root, 0, 0, window->width, window->height, 0,
+		XCB_WINDOW_CLASS_INPUT_OUTPUT, window->screen->root_visual,
+		value_mask, value_list);
+
+	/* Magic code that will send notification when window is destroyed */
+	xcb_intern_atom_cookie_t cookie =
+		xcb_intern_atom(window->connection, 1, 12, "WM_PROTOCOLS");
+	xcb_intern_atom_reply_t *reply =
+		xcb_intern_atom_reply(window->connection, cookie, 0);
+
+	xcb_intern_atom_cookie_t cookie2 =
+		xcb_intern_atom(window->connection, 0, 16, "WM_DELETE_WINDOW");
+	window->atom_wm_delete_window =
+		xcb_intern_atom_reply(window->connection, cookie2, 0);
+
+	xcb_change_property(window->connection, XCB_PROP_MODE_REPLACE, window->window,
+		(*reply).atom, 4, 32, 1,
+		&(*window->atom_wm_delete_window).atom);
+	free(reply);
+
+	xcb_map_window(window->connection, window->window);
+}
+#endif // _WIN32
+
+static void init_vk_swapchain(DG_Window *window) {
+	VkResult err;
+	uint32_t i;
+
+	// Create a WSI surface for the window:
+#ifdef _WIN32
+	VkWin32SurfaceCreateInfoKHR createInfo;
+	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	createInfo.pNext = NULL;
+	createInfo.flags = 0;
+	createInfo.hinstance = window->connection;
+	createInfo.hwnd = window->window;
+
+	err =
+		vkCreateWin32SurfaceKHR(window->inst, &createInfo, NULL, &window->surface);
+
+#else  // _WIN32
+	VkXcbSurfaceCreateInfoKHR createInfo;
+	createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+	createInfo.pNext = NULL;
+	createInfo.flags = 0;
+	createInfo.connection = window->connection;
+	createInfo.window = window->window;
+
+	err = vkCreateXcbSurfaceKHR(window->inst, &createInfo, NULL, &window->surface);
+#endif // _WIN32
+
+	// Iterate over each queue to learn whether it supports presenting:
+	VkBool32 *supportsPresent =
+		(VkBool32 *)malloc(window->queue_count * sizeof(VkBool32));
+	for (i = 0; i < window->queue_count; i++) {
+		window->fpGetPhysicalDeviceSurfaceSupportKHR(window->gpu, i, window->surface,
+			&supportsPresent[i]);
+	}
+
+	// Search for a graphics and a present queue in the array of queue
+	// families, try to find one that supports both
+	uint32_t graphicsQueueNodeIndex = UINT32_MAX;
+	uint32_t presentQueueNodeIndex = UINT32_MAX;
+	for (i = 0; i < window->queue_count; i++) {
+		if ((window->queue_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
+			if (graphicsQueueNodeIndex == UINT32_MAX) {
+				graphicsQueueNodeIndex = i;
+			}
+
+			if (supportsPresent[i] == VK_TRUE) {
+				graphicsQueueNodeIndex = i;
+				presentQueueNodeIndex = i;
+				break;
+			}
+		}
+	}
+	if (presentQueueNodeIndex == UINT32_MAX) {
+		// If didn't find a queue that supports both graphics and present, then
+		// find a separate present queue.
+		for (uint32_t i = 0; i < window->queue_count; ++i) {
+			if (supportsPresent[i] == VK_TRUE) {
+				presentQueueNodeIndex = i;
+				break;
+			}
+		}
+	}
+	free(supportsPresent);
+
+	// Generate error if could not find both a graphics and a present queue
+	if (graphicsQueueNodeIndex == UINT32_MAX ||
+		presentQueueNodeIndex == UINT32_MAX) {
+		ERR_EXIT("Could not find a graphics and a present queue\n",
+			"Swapchain Initialization Failure");
+	}
+
+	// TODO: Add support for separate queues, including presentation,
+	//       synchronization, and appropriate tracking for QueueSubmit.
+	// NOTE: While it is possible for an application to use a separate graphics
+	//       and a present queues, this program assumes it is only using
+	//       one:
+	if (graphicsQueueNodeIndex != presentQueueNodeIndex) {
+		ERR_EXIT("Could not find a common graphics and a present queue\n",
+			"Swapchain Initialization Failure");
+	}
+
+	window->graphics_queue_node_index = graphicsQueueNodeIndex;
+
+	init_device(window);
+
+	vkGetDeviceQueue(window->device, window->graphics_queue_node_index, 0,
+		&window->queue);
+
+	// Get the list of VkFormat's that are supported:
+	uint32_t formatCount;
+	err = window->fpGetPhysicalDeviceSurfaceFormatsKHR(window->gpu, window->surface,
+		&formatCount, NULL);
+	assert(!err);
+	VkSurfaceFormatKHR *surfFormats =
+		(VkSurfaceFormatKHR *)malloc(formatCount * sizeof(VkSurfaceFormatKHR));
+	err = window->fpGetPhysicalDeviceSurfaceFormatsKHR(window->gpu, window->surface,
+		&formatCount, surfFormats);
+	assert(!err);
+	// If the format list includes just one entry of VK_FORMAT_UNDEFINED,
+	// the surface has no preferred format.  Otherwise, at least one
+	// supported format will be returned.
+	if (formatCount == 1 && surfFormats[0].format == VK_FORMAT_UNDEFINED) {
+		window->format = VK_FORMAT_B8G8R8A8_UNORM;
+	}
+	else {
+		assert(formatCount >= 1);
+		window->format = surfFormats[0].format;
+	}
+	window->color_space = surfFormats[0].colorSpace;
+
+	// Get Memory information and properties
+	vkGetPhysicalDeviceMemoryProperties(window->gpu, &window->memory_properties);
+}
+
 void vulkanRender(HINSTANCE hInst, HWND hwnd) {
 	const char * extensionNames[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
 
