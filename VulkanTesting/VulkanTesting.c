@@ -43,7 +43,7 @@ static void init(DG_Window *window, const int argc, const char *argv[])
 
 #ifdef _WIN32
 	window->connection = hInstance;
-	strncpy(window->name, "Vulkan Testing", APP_NAME_STR_LEN);
+	strncpy(window->name, "Vulkan Testing", strlen("Vulkan Testing"));
 
 	if (strncmp(pCmdLine, "--use_staging", strlen("--use_staging")) == 0)
 		window->use_staging_buffer = true;
