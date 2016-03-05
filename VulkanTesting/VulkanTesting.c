@@ -987,6 +987,81 @@ static void prepare_buffers(DG_Window *window) {
 	}
 }
 
+static void prepare_depth(DG_Window *window) {
+	const VkFormat depth_format = VK_FORMAT_D16_UNORM;
+	const VkImageCreateInfo image = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.pNext = NULL,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = depth_format,
+		.extent = { window->width, window->height, 1 },
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		.flags = 0,
+	};
+	VkMemoryAllocateInfo mem_alloc = {
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		.pNext = NULL,
+		.allocationSize = 0,
+		.memoryTypeIndex = 0,
+	};
+	VkImageViewCreateInfo view = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+		.pNext = NULL,
+		.image = VK_NULL_HANDLE,
+		.format = depth_format,
+		.subresourceRange = { .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+		.baseMipLevel = 0,
+		.levelCount = 1,
+		.baseArrayLayer = 0,
+		.layerCount = 1 },
+		.flags = 0,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+	};
+
+	VkMemoryRequirements mem_reqs;
+	VkResult err;
+	bool pass;
+
+	window->depth.format = depth_format;
+
+	/* create image */
+	err = vkCreateImage(window->device, &image, NULL, &window->depth.image);
+	assert(!err);
+
+	/* get memory requirements for this object */
+	vkGetImageMemoryRequirements(window->device, window->depth.image, &mem_reqs);
+
+	/* select memory size and type */
+	mem_alloc.allocationSize = mem_reqs.size;
+	pass = memory_type_from_properties(window, mem_reqs.memoryTypeBits,
+		0, /* No requirements */
+		&mem_alloc.memoryTypeIndex);
+	assert(pass);
+
+	/* allocate memory */
+	err = vkAllocateMemory(window->device, &mem_alloc, NULL, &window->depth.mem);
+	assert(!err);
+
+	/* bind memory */
+	err =
+		vkBindImageMemory(window->device, window->depth.image, window->depth.mem, 0);
+	assert(!err);
+
+	set_image_layout(window, window->depth.image, VK_IMAGE_ASPECT_DEPTH_BIT,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+	/* create image view */
+	view.image = window->depth.image;
+	err = vkCreateImageView(window->device, &view, NULL, &window->depth.view);
+	assert(!err);
+}
+
+
 /*
 void vulkanRender(HINSTANCE hInst, HWND hwnd) {
 	const char * extensionNames[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
