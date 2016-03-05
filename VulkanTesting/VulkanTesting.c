@@ -832,6 +832,161 @@ static void prepare(DG_Window *window) {
 	window->prepared = true;
 }
 
+static void prepare_buffers(DG_Window *window) {
+	VkResult err;
+	VkSwapchainKHR oldSwapchain = window->swapchain;
+
+	// Check the surface capabilities and formats
+	VkSurfaceCapabilitiesKHR surfCapabilities;
+	err = window->fpGetPhysicalDeviceSurfaceCapabilitiesKHR(
+		window->gpu, window->surface, &surfCapabilities);
+	assert(!err);
+
+	uint32_t presentModeCount;
+	err = window->fpGetPhysicalDeviceSurfacePresentModesKHR(
+		window->gpu, window->surface, &presentModeCount, NULL);
+	assert(!err);
+	VkPresentModeKHR *presentModes =
+		(VkPresentModeKHR *)malloc(presentModeCount * sizeof(VkPresentModeKHR));
+	assert(presentModes);
+	err = window->fpGetPhysicalDeviceSurfacePresentModesKHR(
+		window->gpu, window->surface, &presentModeCount, presentModes);
+	assert(!err);
+
+	VkExtent2D swapchainExtent;
+	// width and height are either both -1, or both not -1.
+	if (surfCapabilities.currentExtent.width == (uint32_t)-1) {
+		// If the surface size is undefined, the size is set to
+		// the size of the images requested.
+		swapchainExtent.width = window->width;
+		swapchainExtent.height = window->height;
+	}
+	else {
+		// If the surface size is defined, the swap chain size must match
+		swapchainExtent = surfCapabilities.currentExtent;
+		window->width = surfCapabilities.currentExtent.width;
+		window->height = surfCapabilities.currentExtent.height;
+	}
+
+	VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+
+	// Determine the number of VkImage's to use in the swap chain (we desire to
+	// own only 1 image at a time, besides the images being displayed and
+	// queued for display):
+	uint32_t desiredNumberOfSwapchainImages =
+		surfCapabilities.minImageCount + 1;
+	if ((surfCapabilities.maxImageCount > 0) &&
+		(desiredNumberOfSwapchainImages > surfCapabilities.maxImageCount)) {
+		// Application must settle for fewer images than desired:
+		desiredNumberOfSwapchainImages = surfCapabilities.maxImageCount;
+	}
+
+	VkSurfaceTransformFlagsKHR preTransform;
+	if (surfCapabilities.supportedTransforms &
+		VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) {
+		preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	}
+	else {
+		preTransform = surfCapabilities.currentTransform;
+	}
+
+	const VkSwapchainCreateInfoKHR swapchain = {
+		.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+		.pNext = NULL,
+		.surface = window->surface,
+		.minImageCount = desiredNumberOfSwapchainImages,
+		.imageFormat = window->format,
+		.imageColorSpace = window->color_space,
+		.imageExtent =
+		{
+			.width = swapchainExtent.width, .height = swapchainExtent.height,
+		},
+		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		.preTransform = preTransform,
+		.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+		.imageArrayLayers = 1,
+		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.queueFamilyIndexCount = 0,
+		.pQueueFamilyIndices = NULL,
+		.presentMode = swapchainPresentMode,
+		.oldSwapchain = oldSwapchain,
+		.clipped = true,
+	};
+	uint32_t i;
+
+	err = window->fpCreateSwapchainKHR(window->device, &swapchain, NULL,
+		&window->swapchain);
+	assert(!err);
+
+	// If we just re-created an existing swapchain, we should destroy the old
+	// swapchain at this point.
+	// Note: destroying the swapchain also cleans up all its associated
+	// presentable images once the platform is done with them.
+	if (oldSwapchain != VK_NULL_HANDLE) {
+		window->fpDestroySwapchainKHR(window->device, oldSwapchain, NULL);
+	}
+
+	err = window->fpGetSwapchainImagesKHR(window->device, window->swapchain,
+		&window->swapchainImageCount, NULL);
+	assert(!err);
+
+	VkImage *swapchainImages =
+		(VkImage *)malloc(window->swapchainImageCount * sizeof(VkImage));
+	assert(swapchainImages);
+	err = window->fpGetSwapchainImagesKHR(window->device, window->swapchain,
+		&window->swapchainImageCount,
+		swapchainImages);
+	assert(!err);
+
+	window->buffers = (DG_SwapchainBuffers *)malloc(sizeof(DG_SwapchainBuffers) *
+		window->swapchainImageCount);
+	assert(window->buffers);
+
+	for (i = 0; i < window->swapchainImageCount; i++) {
+		VkImageViewCreateInfo color_attachment_view = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.pNext = NULL,
+			.format = window->format,
+			.components =
+			{
+				.r = VK_COMPONENT_SWIZZLE_R,
+				.g = VK_COMPONENT_SWIZZLE_G,
+				.b = VK_COMPONENT_SWIZZLE_B,
+				.a = VK_COMPONENT_SWIZZLE_A,
+			},
+			.subresourceRange = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1 },
+			.viewType = VK_IMAGE_VIEW_TYPE_2D,
+			.flags = 0,
+		};
+
+		window->buffers[i].image = swapchainImages[i];
+
+		// Render loop will expect image to have been used before and in
+		// VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		// layout and will change to COLOR_ATTACHMENT_OPTIMAL, so init the image
+		// to that state
+		set_image_layout(
+			window, window->buffers[i].image, VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+		color_attachment_view.image = window->buffers[i].image;
+
+		err = vkCreateImageView(window->device, &color_attachment_view, NULL,
+			&window->buffers[i].view);
+		assert(!err);
+	}
+
+	window->current_buffer = 0;
+
+	if (NULL != presentModes) {
+		free(presentModes);
+	}
+}
+
 /*
 void vulkanRender(HINSTANCE hInst, HWND hwnd) {
 	const char * extensionNames[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
