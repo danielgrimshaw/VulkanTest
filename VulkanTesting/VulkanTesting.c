@@ -1061,6 +1061,126 @@ static void prepare_depth(DG_Window *window) {
 	assert(!err);
 }
 
+static void prepare_textures(DG_Window *window) {
+	const VkFormat tex_format = VK_FORMAT_B8G8R8A8_UNORM;
+	VkFormatProperties props;
+	const uint32_t tex_colors[1][2] = {
+		{ 0xffff0000, 0xff00ff00 },
+	};
+	uint32_t i;
+	VkResult err;
+
+	vkGetPhysicalDeviceFormatProperties(window->gpu, tex_format, &props);
+
+	for (i = 0; i < 1; i++) {
+		if ((props.linearTilingFeatures &
+			VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) &&
+			!window->use_staging_buffer) {
+			/* Device can texture using linear textures */
+			prepare_texture_image(window, tex_colors[i], &window->textures[i],
+				VK_IMAGE_TILING_LINEAR,
+				VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		}
+		else if (props.optimalTilingFeatures &
+			VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
+			/* Must use staging buffer to copy linear texture to optimized */
+			DG_texture_object staging_texture;
+
+			memset(&staging_texture, 0, sizeof(staging_texture));
+			prepare_texture_image(window, tex_colors[i], &staging_texture,
+				VK_IMAGE_TILING_LINEAR,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+			prepare_texture_image(
+				window, tex_colors[i], &window->textures[i],
+				VK_IMAGE_TILING_OPTIMAL,
+				(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT),
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+			set_image_layout(window, staging_texture.image,
+				VK_IMAGE_ASPECT_COLOR_BIT,
+				staging_texture.imageLayout,
+				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+			set_image_layout(window, window->textures[i].image,
+				VK_IMAGE_ASPECT_COLOR_BIT,
+				window->textures[i].imageLayout,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+			VkImageCopy copy_region = {
+				.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+				.srcOffset = { 0, 0, 0 },
+				.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+				.dstOffset = { 0, 0, 0 },
+				.extent = { staging_texture.tex_width,
+				staging_texture.tex_height, 1 },
+			};
+			vkCmdCopyImage(
+				window->setup_cmd, staging_texture.image,
+				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, window->textures[i].image,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
+
+			set_image_layout(window, window->textures[i].image,
+				VK_IMAGE_ASPECT_COLOR_BIT,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				window->textures[i].imageLayout);
+
+			flush_init_cmd(window);
+
+			destroy_texture_image(window, &staging_texture);
+		}
+		else {
+			/* Can't support VK_FORMAT_B8G8R8A8_UNORM !? */
+			assert(!"No support for B8G8R8A8_UNORM as texture image format");
+		}
+
+		const VkSamplerCreateInfo sampler = {
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.pNext = NULL,
+			.magFilter = VK_FILTER_NEAREST,
+			.minFilter = VK_FILTER_NEAREST,
+			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.mipLodBias = 0.0f,
+			.anisotropyEnable = VK_FALSE,
+			.maxAnisotropy = 1,
+			.compareOp = VK_COMPARE_OP_NEVER,
+			.minLod = 0.0f,
+			.maxLod = 0.0f,
+			.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+			.unnormalizedCoordinates = VK_FALSE,
+		};
+		VkImageViewCreateInfo view = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.pNext = NULL,
+			.image = VK_NULL_HANDLE,
+			.viewType = VK_IMAGE_VIEW_TYPE_2D,
+			.format = tex_format,
+			.components =
+			{
+				VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+				VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A,
+			},
+			.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+			.flags = 0,
+		};
+
+		/* create sampler */
+		err = vkCreateSampler(window->device, &sampler, NULL,
+			&window->textures[i].sampler);
+		assert(!err);
+
+		/* create image view */
+		view.image = window->textures[i].image;
+		err = vkCreateImageView(window->device, &view, NULL,
+			&window->textures[i].view);
+		assert(!err);
+	}
+}
 
 /*
 void vulkanRender(HINSTANCE hInst, HWND hwnd) {
