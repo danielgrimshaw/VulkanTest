@@ -1,10 +1,10 @@
-﻿Build started 5/22/2016 8:38:38 PM.
+﻿Build started 5/22/2016 9:36:04 PM.
      1>Project "D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Vulkan\Vulkan.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt Main.cpp Renderer.cpp
          Renderer.cpp
-         Generating Code...
-         Compiling...
+     1>d:\programming\github\graphics\vulkan\vulkantesting\vulkan\vulkan\renderer.cpp(106): warning C4129: ' ' : unrecognized character escape sequence
+     1>d:\programming\github\graphics\vulkan\vulkantesting\vulkan\vulkan\renderer.cpp(124): warning C4129: ' ' : unrecognized character escape sequence
          Main.cpp
          Generating Code...
        Link:
@@ -15,4 +15,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:01.11
+Time Elapsed 00:00:00.72
