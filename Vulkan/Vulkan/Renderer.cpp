@@ -17,6 +17,9 @@
 */
 #include "Renderer.h"
 #include "util.h"
+#include "BUILD_OPTIONS.h"
+#include "Platform.h"
+#include "Window.h"
 
 #include <vulkan/vk_layer.h>
 
@@ -27,10 +30,6 @@
 #include <iostream>
 #include <sstream>
 
-#ifdef _WIN32
-#include <Windows.h>
-#endif
-
 // Construction
 Renderer::Renderer() {
 	_SetupDebug();
@@ -40,9 +39,23 @@ Renderer::Renderer() {
 }
 
 Renderer::~Renderer() {
+	delete _window;
+
 	_DeInitDevice();
 	_DeInitDebug();
 	_DeInitInstance();
+}
+
+Window * Renderer::openWindow(uint32_t size_x, uint32_t size_y, std::string name) {
+	_window = new Window(size_x, size_y, name);
+	return _window;
+}
+
+bool Renderer::run() {
+	if (nullptr != _window) {
+		return _window->update();
+	}
+	return true;
 }
 
 VkInstance Renderer::getInstance() {
@@ -243,6 +256,7 @@ void Renderer::_DeInitDevice() {
 }
 
 // Debug
+#if BUILD_ENABLE_VULKAN_DEBUG
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 	VkDebugReportFlagsEXT msg_flags,
@@ -336,3 +350,10 @@ void Renderer::_DeInitDebug() {
 	fvkDestroyDebugReportCallbackEXT(_instance, _debug_report, nullptr);
 	_debug_report = VK_NULL_HANDLE;
 }
+
+#else
+
+void Renderer::_SetupDebug() {};
+void Renderer::_InitDebug() {};
+void Renderer::_DeInitDebug() {};
+#endif // BUILD_ENABLE_VULKAN_DEBUG

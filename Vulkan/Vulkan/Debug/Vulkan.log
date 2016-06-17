@@ -1,18 +1,19 @@
-﻿Build started 5/22/2016 9:36:04 PM.
+﻿Build started 6/16/2016 4:28:22 PM.
      1>Project "D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Vulkan\Vulkan.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
-         D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt Main.cpp Renderer.cpp
+         D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt Renderer.cpp
          Renderer.cpp
-     1>d:\programming\github\graphics\vulkan\vulkantesting\vulkan\vulkan\renderer.cpp(106): warning C4129: ' ' : unrecognized character escape sequence
-     1>d:\programming\github\graphics\vulkan\vulkantesting\vulkan\vulkan\renderer.cpp(124): warning C4129: ' ' : unrecognized character escape sequence
-         Main.cpp
-         Generating Code...
+     1>d:\programming\github\graphics\vulkan\vulkantesting\vulkan\vulkan\renderer.cpp(132): warning C4129: ' ' : unrecognized character escape sequence
+     1>d:\programming\github\graphics\vulkan\vulkantesting\vulkan\vulkan\renderer.cpp(151): warning C4129: ' ' : unrecognized character escape sequence
+     1>d:\programming\github\graphics\vulkan\vulkantesting\vulkan\vulkan\renderer.cpp(170): warning C4129: ' ' : unrecognized character escape sequence
+     1>d:\programming\github\graphics\vulkan\vulkantesting\vulkan\vulkan\renderer.cpp(189): warning C4129: ' ' : unrecognized character escape sequence
        Link:
          D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Debug\Vulkan.exe" /INCREMENTAL /NOLOGO "vulkan-1.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Debug\Vulkan.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Debug\Vulkan.lib" /MACHINE:X86 Debug\Main.obj
          Debug\Renderer.obj
+         Debug\util.obj
          Vulkan.vcxproj -> D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Debug\Vulkan.exe
      1>Done Building Project "D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Vulkan\Vulkan.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.72
+Time Elapsed 00:00:01.05

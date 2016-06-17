@@ -21,6 +21,13 @@
 int main(void) {
 	Renderer r;
 
+	r.openWindow(800, 600, "Vulkan Test");
+
+	while (r.run()) {
+
+	}
+
+	/*
 	VkDevice device = r.getDevice();
 	VkQueue queue = r.getQueue();
 
@@ -131,6 +138,7 @@ int main(void) {
 	vkDestroyCommandPool(device, command_pool, nullptr);
 	vkDestroyFence(device, fence, nullptr);
 	vkDestroySemaphore(device, semaphore, nullptr);
+	*/
 
 	return 0;
 }

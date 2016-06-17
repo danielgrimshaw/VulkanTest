@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <assert.h>
-#include <vulkan/vulkan.h>
+
+#include "Platform.h"
 
 void ErrorCheck(VkResult result);

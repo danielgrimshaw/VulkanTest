@@ -137,10 +137,15 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="util.cpp" />
+    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="Window_win32.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BUILD_OPTIONS.h" />
+    <ClInclude Include="Platform.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="util.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

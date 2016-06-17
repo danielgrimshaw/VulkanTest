@@ -16,6 +16,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "util.h"
+#include "BUILD_OPTIONS.h"
+
+#if BUILD_ENABLE_VULKAN_RUNTIME_DEBUG
 
 void ErrorCheck(VkResult result) {
 	using namespace std;
@@ -82,3 +85,9 @@ void ErrorCheck(VkResult result) {
 		assert(0 && "Vulkan runtime error");
 	}
 }
+
+#else
+
+void ErrorCheck(VkResult result) {};
+
+#endif //BUILD_ENABLE_VULKAN_RUNTIME_DEBUG

@@ -17,14 +17,21 @@
 */
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include "Platform.h"
+
 #include <vector>
+
+class Window;
 
 class Renderer
 {
 public:
 	Renderer();
 	~Renderer();
+
+	Window * openWindow(uint32_t size_x, uint32_t size_y, std::string name);
+
+	bool run();
 
 	VkInstance getInstance();
 	VkPhysicalDevice getPhysicalDevice();
@@ -52,6 +59,8 @@ private:
 	VkQueue _queue = VK_NULL_HANDLE;
 
 	uint32_t _graphics_family_index = 0;
+
+	Window * _window = nullptr;
 
 	std::vector<const char *> _instance_layer_list;
 	std::vector<const char *> _instance_extension_list;

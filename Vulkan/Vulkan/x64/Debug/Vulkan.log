@@ -1,21 +1,27 @@
-﻿Build started 5/23/2016 4:10:51 PM.
+﻿Build started 6/16/2016 9:04:13 PM.
      1>Project "D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Vulkan\Vulkan.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
-         D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /Od /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt Renderer.cpp
+         D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /Od /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt Renderer.cpp Window_win32.cpp
+         Window_win32.cpp
          Renderer.cpp
-     1>Renderer.cpp(42): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(44): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(112): warning C4129: ' ' : unrecognized character escape sequence
-     1>Renderer.cpp(130): warning C4129: ' ' : unrecognized character escape sequence
-     1>Renderer.cpp(147): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(149): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(98): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(100): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(169): warning C4129: ' ' : unrecognized character escape sequence
+     1>Renderer.cpp(188): warning C4129: ' ' : unrecognized character escape sequence
+     1>Renderer.cpp(207): warning C4129: ' ' : unrecognized character escape sequence
+     1>Renderer.cpp(226): warning C4129: ' ' : unrecognized character escape sequence
+     1>Renderer.cpp(243): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(245): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+         Generating Code...
        Link:
          D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\x64\Debug\Vulkan.exe" /INCREMENTAL /NOLOGO "vulkan-1.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\x64\Debug\Vulkan.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\x64\Debug\Vulkan.lib" /MACHINE:X64 x64\Debug\Main.obj
          x64\Debug\Renderer.obj
          x64\Debug\util.obj
+         x64\Debug\Window.obj
+         x64\Debug\Window_win32.obj
          Vulkan.vcxproj -> D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\x64\Debug\Vulkan.exe
      1>Done Building Project "D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Vulkan\Vulkan.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.87
+Time Elapsed 00:00:01.64
