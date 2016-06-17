@@ -1,5 +1,24 @@
+/* Copyright (C) 2016 Daniel Grimshaw
+*
+* Renderer.cpp | A Vulkan based rendering object
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "Renderer.h"
 #include "util.h"
+
+#include <vulkan/vk_layer.h>
 
 #include <cstdlib>
 #include <assert.h>
@@ -14,9 +33,9 @@
 
 // Construction
 Renderer::Renderer() {
-	//_SetupDebug();
+	_SetupDebug();
 	_InitInstance();
-	//_InitDebug();
+	_InitDebug();
 	_InitDevice();
 }
 
@@ -96,6 +115,7 @@ void Renderer::_InitDevice() {
 		}
 	}
 
+	// Instance Layers
 	{
 		uint32_t layer_count = 0;
 
@@ -114,6 +134,26 @@ void Renderer::_InitDevice() {
 		std::cout << std::endl;
 	}
 
+	// Instance Extensions
+	{
+		uint32_t extension_count = 0;
+
+		// Read the number of extensions
+		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+
+		std::vector<VkExtensionProperties> extension_property_list(extension_count);
+
+		// Populate list
+		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extension_property_list.data());
+
+		std::cout << "Instance extensions: \n";
+		for (auto &i : extension_property_list) {
+			std::cout << " " << i.extensionName << "\t\t\ | " << i.specVersion << std::endl;
+		}
+		std::cout << std::endl;
+	}
+
+	// Device Layers
 	{
 		uint32_t layer_count = 0;
 
@@ -128,6 +168,25 @@ void Renderer::_InitDevice() {
 		std::cout << "Device layers: \n";
 		for (auto &i : layer_property_list) {
 			std::cout << " " << i.layerName << "\t\t\ | " << i.description << std::endl;
+		}
+		std::cout << std::endl;
+	}
+
+	// Device Extensions
+	{
+		uint32_t extension_count = 0;
+
+		// Read the number of extensions
+		vkEnumerateDeviceExtensionProperties(_gpu, nullptr, &extension_count, nullptr);
+
+		std::vector<VkExtensionProperties> extension_property_list(extension_count);
+
+		// Populate list
+		vkEnumerateDeviceExtensionProperties(_gpu, nullptr, &extension_count, extension_property_list.data());
+
+		std::cout << "Device extensions: \n";
+		for (auto &i : extension_property_list) {
+			std::cout << " " << i.extensionName << "\t\t\ | " << i.specVersion << std::endl;
 		}
 		std::cout << std::endl;
 	}
@@ -150,6 +209,8 @@ void Renderer::_InitDevice() {
 	device_create_info.ppEnabledExtensionNames = _device_extension_list.data();
 
 	ErrorCheck(vkCreateDevice(_gpu, &device_create_info, nullptr, &_device));
+
+	vkGetDeviceQueue(_device, _graphics_family_index, 0, &_queue);
 }
 
 void Renderer::_DeInitDevice() {
@@ -221,7 +282,7 @@ void Renderer::_SetupDebug() {
 //	_instance_layer_list.push_back("VK_LAYER_LUNARG_object_tracker");
 //	_instance_layer_list.push_back("VK_LAYER_LUNARG_param_checker");
 
-	_instance_extension_list.push_back("VK_EXT_DEBUG_REPORT_EXTENSION_NAME");
+	_instance_extension_list.push_back("VK_EXT_debug_report");
 
 	_device_layer_list.push_back("VK_LAYER_LUNARG_standard_validation");
 //	_device_layer_list.push_back("VK_LAYER_GOOGLE_threading");
@@ -249,5 +310,5 @@ void Renderer::_InitDebug() {
 
 void Renderer::_DeInitDebug() {
 	fvkDestroyDebugReportCallbackEXT(_instance, _debug_report, nullptr);
-	_debug_report = nullptr;
+	_debug_report = VK_NULL_HANDLE;
 }
