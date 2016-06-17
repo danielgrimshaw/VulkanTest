@@ -45,6 +45,30 @@ Renderer::~Renderer() {
 	_DeInitInstance();
 }
 
+VkInstance Renderer::getInstance() {
+	return _instance;
+}
+
+VkPhysicalDevice Renderer::getPhysicalDevice() {
+	return _gpu;
+}
+
+VkPhysicalDeviceProperties Renderer::getPhysicalDeviceProperties() {
+	return _gpu_properties;
+}
+
+VkDevice Renderer::getDevice() {
+	return _device;
+}
+
+VkQueue Renderer::getQueue() {
+	return _queue;
+}
+
+uint32_t Renderer::getGraphicsFamilyIndex() {
+	return _graphics_family_index;
+}
+
 // Instances
 void Renderer::_InitInstance() {
 	// Application info

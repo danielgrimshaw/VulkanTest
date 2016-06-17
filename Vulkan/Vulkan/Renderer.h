@@ -25,6 +25,15 @@ class Renderer
 public:
 	Renderer();
 	~Renderer();
+
+	VkInstance getInstance();
+	VkPhysicalDevice getPhysicalDevice();
+	VkPhysicalDeviceProperties getPhysicalDeviceProperties();
+	VkDevice getDevice();
+	VkQueue getQueue();
+
+	uint32_t getGraphicsFamilyIndex();
+
 private:
 	void _InitInstance();
 	void _DeInitInstance();
@@ -40,6 +49,7 @@ private:
 	VkPhysicalDevice _gpu = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties _gpu_properties = {};
 	VkDevice _device = VK_NULL_HANDLE;
+	VkQueue _queue = VK_NULL_HANDLE;
 
 	uint32_t _graphics_family_index = 0;
 
