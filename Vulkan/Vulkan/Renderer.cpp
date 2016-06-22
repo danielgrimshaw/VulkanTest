@@ -87,6 +87,8 @@ void Renderer::_SetupLayersAndExtensions() {
 	//_instance_extension_list.push_back(VK_KHR_DISPLAY_EXTENSION_NAME); // Exclusive mode only
 	_instance_extension_list.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 	_instance_extension_list.push_back(PLATFORM_SURFACE_EXTENSION_NAME);
+	
+	_device_extension_list.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 }
 
 // Instances
