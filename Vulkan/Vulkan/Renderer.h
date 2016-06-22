@@ -33,15 +33,16 @@ public:
 
 	bool run();
 
-	VkInstance getInstance();
-	VkPhysicalDevice getPhysicalDevice();
-	VkPhysicalDeviceProperties getPhysicalDeviceProperties();
-	VkDevice getDevice();
-	VkQueue getQueue();
-
-	uint32_t getGraphicsFamilyIndex();
+	const VkInstance getInstance() const;
+	const VkPhysicalDevice getPhysicalDevice() const;
+	const VkDevice getDevice() const;
+	const VkQueue getQueue() const;
+	const uint32_t getGraphicsFamilyIndex() const;
+	const VkPhysicalDeviceProperties & getPhysicalDeviceProperties() const;
 
 private:
+	void _SetupLayersAndExtensions();
+
 	void _InitInstance();
 	void _DeInitInstance();
 

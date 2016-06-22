@@ -32,6 +32,7 @@
 
 // Construction
 Renderer::Renderer() {
+	_SetupLayersAndExtensions();
 	_SetupDebug();
 	_InitInstance();
 	_InitDebug();
@@ -47,7 +48,7 @@ Renderer::~Renderer() {
 }
 
 Window * Renderer::openWindow(uint32_t size_x, uint32_t size_y, std::string name) {
-	_window = new Window(size_x, size_y, name);
+	_window = new Window(this, size_x, size_y, name);
 	return _window;
 }
 
@@ -58,28 +59,34 @@ bool Renderer::run() {
 	return true;
 }
 
-VkInstance Renderer::getInstance() {
+const VkInstance Renderer::getInstance() const {
 	return _instance;
 }
 
-VkPhysicalDevice Renderer::getPhysicalDevice() {
+const VkPhysicalDevice Renderer::getPhysicalDevice() const {
 	return _gpu;
 }
 
-VkPhysicalDeviceProperties Renderer::getPhysicalDeviceProperties() {
-	return _gpu_properties;
-}
-
-VkDevice Renderer::getDevice() {
+const VkDevice Renderer::getDevice() const {
 	return _device;
 }
 
-VkQueue Renderer::getQueue() {
+const VkQueue Renderer::getQueue() const {
 	return _queue;
 }
 
-uint32_t Renderer::getGraphicsFamilyIndex() {
+const uint32_t Renderer::getGraphicsFamilyIndex() const {
 	return _graphics_family_index;
+}
+
+const VkPhysicalDeviceProperties & Renderer::getPhysicalDeviceProperties() const {
+	return _gpu_properties;
+}
+
+void Renderer::_SetupLayersAndExtensions() {
+	//_instance_extension_list.push_back(VK_KHR_DISPLAY_EXTENSION_NAME); // Exclusive mode only
+	_instance_extension_list.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+	_instance_extension_list.push_back(PLATFORM_SURFACE_EXTENSION_NAME);
 }
 
 // Instances
@@ -320,7 +327,7 @@ void Renderer::_SetupDebug() {
 //	_instance_layer_list.push_back("VK_LAYER_LUNARG_object_tracker");
 //	_instance_layer_list.push_back("VK_LAYER_LUNARG_param_checker");
 
-	_instance_extension_list.push_back("VK_EXT_debug_report");
+	_instance_extension_list.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
 	_device_layer_list.push_back("VK_LAYER_LUNARG_standard_validation");
 //	_device_layer_list.push_back("VK_LAYER_GOOGLE_threading");

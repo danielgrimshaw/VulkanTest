@@ -2,6 +2,7 @@
 #include "Platform.h"
 
 #include "Window.h"
+#include "Renderer.h"
 #include <assert.h>
 
 #if VK_USE_PLATFORM_WIN32_KHR
@@ -104,4 +105,11 @@ void Window::_UpdateOSWindow() {
 	}
 }
 
+void Window::_InitOSSurface() {
+	VkWin32SurfaceCreateInfoKHR surface_create_info {};
+	surface_create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	surface_create_info.hinstance = _win32_instance;
+	surface_create_info.hwnd = _win32_window;
+	vkCreateWin32SurfaceKHR(_renderer->getInstance(), &surface_create_info, nullptr, &_surface);
+}
 #endif

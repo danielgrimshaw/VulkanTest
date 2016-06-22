@@ -1,11 +1,14 @@
 #pragma once
 
+#include "Platform.h"
 #include <string>
 #include <cstdint>
 
+class Renderer;
+
 class Window {
 public:
-	Window(uint32_t size_x, uint32_t size_y, std::string name);
+	Window(Renderer * renderer, uint32_t size_x, uint32_t size_y, std::string name);
 	~Window();
 
 	void close();
@@ -17,9 +20,19 @@ private:
 	void _UpdateOSWindow();
 	void _InitOSSurface();
 
+	void _InitSurface();
+	void _DeInitSurface();
+
+	Renderer * _renderer = nullptr;
+
+	VkSurfaceKHR _surface = VK_NULL_HANDLE;
+
 	uint32_t _surface_size_x = 512;
 	uint32_t _surface_size_y = 512;
 	std::string _window_name;
+
+	VkSurfaceFormatKHR _surface_format = {};
+	VkSurfaceCapabilitiesKHR _surface_capabilities = {};
 
 	bool _window_should_run = true;
 
