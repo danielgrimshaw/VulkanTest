@@ -3,6 +3,7 @@
 #include "Platform.h"
 #include <string>
 #include <cstdint>
+#include <vector>
 
 class Renderer;
 
@@ -26,6 +27,9 @@ private:
 	void _InitSwapchain();
 	void _DeInitSwapchain();
 
+	void _InitSwapchainImages();
+	void _DeInitSwapchainImages();
+
 	Renderer * _renderer = nullptr;
 
 	VkSurfaceKHR _surface = VK_NULL_HANDLE;
@@ -38,6 +42,9 @@ private:
 
 	VkSurfaceFormatKHR _surface_format = {};
 	VkSurfaceCapabilitiesKHR _surface_capabilities = {};
+
+	std::vector<VkImage> _swapchain_images;
+	std::vector<VkImageView> _swapchain_image_views;
 
 	bool _window_should_run = true;
 

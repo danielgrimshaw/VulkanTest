@@ -14,10 +14,12 @@ Window::Window(Renderer * renderer, uint32_t size_x, uint32_t size_y, std::strin
 	_InitOSWindow();
 	_InitSurface();
 	_InitSwapchain();
+	_InitSwapchainImages();
 }
 
 
 Window::~Window() {
+	_DeInitSwapchainImages();
 	_DeInitSwapchain();
 	_DeInitOSWindow();
 	_DeInitSurface();
@@ -71,6 +73,11 @@ void Window::_InitSurface() {
 	}
 }
 
+void Window::_DeInitSurface() {
+	vkDestroySurfaceKHR(_renderer->getInstance(), _surface, nullptr);
+}
+
+
 void Window::_InitSwapchain() {
 	if (_swapchain_image_count < _surface_capabilities.minImageCount)
 		_swapchain_image_count = _surface_capabilities.minImageCount + 1;
@@ -120,6 +127,34 @@ void Window::_DeInitSwapchain() {
 	vkDestroySwapchainKHR(_renderer->getDevice(), _swapchain, nullptr);
 }
 
-void Window::_DeInitSurface() {
-	vkDestroySurfaceKHR(_renderer->getInstance(), _surface, nullptr);
+void Window::_InitSwapchainImages() {
+	_swapchain_images.resize(_swapchain_image_count);
+	_swapchain_image_views.resize(_swapchain_image_count);
+
+	ErrorCheck(vkGetSwapchainImagesKHR(_renderer->getDevice(), _swapchain, &_swapchain_image_count, _swapchain_images.data()));
+
+	for (uint32_t i = 0; i < _swapchain_image_count; i++) {
+		VkImageViewCreateInfo image_view_create_info {};
+		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		image_view_create_info.image = _swapchain_images[i];
+		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		image_view_create_info.format = _surface_format.format;
+		image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_R;
+		image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_G;
+		image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_B;
+		image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_A;
+		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		image_view_create_info.subresourceRange.baseMipLevel = 0;
+		image_view_create_info.subresourceRange.levelCount = 1;
+		image_view_create_info.subresourceRange.baseArrayLayer = 0;
+		image_view_create_info.subresourceRange.layerCount = 1;
+
+		ErrorCheck(vkCreateImageView(_renderer->getDevice(), &image_view_create_info, nullptr, &_swapchain_image_views[i]));
+	}
+}
+
+void Window::_DeInitSwapchainImages() {
+	for (auto view : _swapchain_image_views) {
+		vkDestroyImageView(_renderer->getDevice(), view, nullptr);
+	}
 }
