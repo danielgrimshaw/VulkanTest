@@ -196,11 +196,13 @@ void Renderer::_InitDevice() {
 		// Populate list
 		vkEnumerateInstanceLayerProperties(&layer_count, layer_property_list.data());
 
+#if BUILD_ENABLE_VULKAN_RUNTIME_DEBUG
 		std::cout << "Instance layers: \n";
 		for (auto &i : layer_property_list) {
 			std::cout << " " << i.layerName << "\t\t | " << i.description << std::endl;
 		}
 		std::cout << std::endl;
+#endif
 	}
 
 	// Instance Extensions
@@ -215,11 +217,13 @@ void Renderer::_InitDevice() {
 		// Populate list
 		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extension_property_list.data());
 
+#if BUILD_ENABLE_VULKAN_RUNTIME_DEBUG
 		std::cout << "Instance extensions: \n";
 		for (auto &i : extension_property_list) {
 			std::cout << " " << i.extensionName << "\t\t | " << i.specVersion << std::endl;
 		}
 		std::cout << std::endl;
+#endif
 	}
 
 	// Device Layers
@@ -234,11 +238,13 @@ void Renderer::_InitDevice() {
 		// Populate list
 		vkEnumerateDeviceLayerProperties(_gpu, &layer_count, layer_property_list.data());
 
+#if BUILD_ENABLE_VULKAN_RUNTIME_DEBUG
 		std::cout << "Device layers: \n";
 		for (auto &i : layer_property_list) {
 			std::cout << " " << i.layerName << "\t\t | " << i.description << std::endl;
 		}
 		std::cout << std::endl;
+#endif
 	}
 
 	// Device Extensions
@@ -253,11 +259,13 @@ void Renderer::_InitDevice() {
 		// Populate list
 		vkEnumerateDeviceExtensionProperties(_gpu, nullptr, &extension_count, extension_property_list.data());
 
+#if BUILD_ENABLE_VULKAN_RUNTIME_DEBUG
 		std::cout << "Device extensions: \n";
 		for (auto &i : extension_property_list) {
 			std::cout << " " << i.extensionName << "\t\t | " << i.specVersion << std::endl;
 		}
 		std::cout << std::endl;
+#endif
 	}
 
 	float queue_priorities[] {1.0f};
