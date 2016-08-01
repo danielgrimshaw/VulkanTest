@@ -39,47 +39,31 @@ int main(void) {
 	command_pool_create_info.flags = 0;
 
 	ErrorCheck(vkCreateCommandPool(r.getDevice(), &command_pool_create_info, nullptr, &command_pool));
-
+	
+	// Create Vertex Buffer
 	VkBuffer vertex_buffer;
 	VkDeviceMemory vertex_buffer_memory;
+	VkDeviceSize vertex_buffer_size = sizeof(vertices[0]) * vertices.size();
 
-	VkBufferCreateInfo buffer_create_info {};
-	buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	buffer_create_info.size = sizeof(vertices[0]) * vertices.size();
-	buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	VkBuffer staging_buffer;
+	VkDeviceMemory staging_buffer_memory;
 
-	ErrorCheck(vkCreateBuffer(r.getDevice(), &buffer_create_info, nullptr, &vertex_buffer));
-
-	VkMemoryRequirements mem_requirements {};
-	vkGetBufferMemoryRequirements(r.getDevice(), vertex_buffer, &mem_requirements);
-
-	uint32_t type_filter = mem_requirements.memoryTypeBits;
-	VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	uint32_t memory_type;
-
-	for (uint32_t i = 0; i < r.getPhysicalDeviceMemoryProperties().memoryTypeCount; i++) {
-		if ((type_filter & (1 << i)) && (r.getPhysicalDeviceMemoryProperties().memoryTypes[i].propertyFlags & memory_properties) == memory_properties) {
-			memory_type = i;
-			break;
-		}
-	}
-
-	VkMemoryAllocateInfo memory_allocate_info {};
-	memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memory_allocate_info.allocationSize = mem_requirements.size;
-	memory_allocate_info.memoryTypeIndex = memory_type;
+	r.createBuffer(vertex_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
 
 	void * data;
-	ErrorCheck(vkAllocateMemory(r.getDevice(), &memory_allocate_info, nullptr, &vertex_buffer_memory));
-	ErrorCheck(vkBindBufferMemory(r.getDevice(), vertex_buffer, vertex_buffer_memory, 0));
-	ErrorCheck(vkMapMemory(r.getDevice(), vertex_buffer_memory, 0, buffer_create_info.size, 0, &data));
-	memcpy(data, vertices.data(), (size_t)buffer_create_info.size);
-	vkUnmapMemory(r.getDevice(), vertex_buffer_memory);
+	ErrorCheck(vkMapMemory(r.getDevice(), staging_buffer_memory, 0, vertex_buffer_size, 0, &data));
+	memcpy(data, vertices.data(), (size_t)vertex_buffer_size);
+	vkUnmapMemory(r.getDevice(), staging_buffer_memory);
 
+	r.createBuffer(vertex_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertex_buffer, vertex_buffer_memory);
+
+	// Copy staging buffer into vertex buffer
+	r.copyBuffer(command_pool, staging_buffer, vertex_buffer, vertex_buffer_size);
+
+	// Create Command Buffers
 	std::vector<VkCommandBuffer> command_buffers(r.getSwapchainFramebuffers().size());
 
-	VkCommandBufferAllocateInfo command_buffer_allocate_info {};
+	VkCommandBufferAllocateInfo command_buffer_allocate_info = {};
 	command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	command_buffer_allocate_info.commandPool = command_pool;
 	command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -88,7 +72,7 @@ int main(void) {
 	ErrorCheck(vkAllocateCommandBuffers(r.getDevice(), &command_buffer_allocate_info, command_buffers.data()));
 
 	for (size_t i = 0; i < command_buffers.size(); i++) {
-		VkCommandBufferBeginInfo command_buffer_begin_info {};
+		VkCommandBufferBeginInfo command_buffer_begin_info = {};
 		command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 		command_buffer_begin_info.pInheritanceInfo = nullptr;
@@ -186,8 +170,12 @@ int main(void) {
 	vkFreeCommandBuffers(r.getDevice(), command_pool, (uint32_t) command_buffers.size(), command_buffers.data());
 	vkFreeMemory(r.getDevice(), vertex_buffer_memory, nullptr);
 	vertex_buffer_memory = nullptr;
+	vkFreeMemory(r.getDevice(), staging_buffer_memory, nullptr);
+	staging_buffer_memory = nullptr;
 	vkDestroyBuffer(r.getDevice(), vertex_buffer, nullptr);
 	vertex_buffer = nullptr;
+	vkDestroyBuffer(r.getDevice(), staging_buffer, nullptr);
+	staging_buffer = nullptr;
 	vkDestroyCommandPool(r.getDevice(), command_pool, nullptr);
 	command_pool = nullptr;
 

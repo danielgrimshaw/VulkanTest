@@ -110,6 +110,72 @@ const VkPipeline Renderer::getGraphicsPipeline() const {
 	return _graphics_pipeline;
 }
 
+void Renderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_properties, VkBuffer & buffer, VkDeviceMemory & buffer_memory) {
+	VkBufferCreateInfo buffer_create_info{};
+	buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buffer_create_info.size = size;
+	buffer_create_info.usage = usage;
+	buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	ErrorCheck(vkCreateBuffer(_device, &buffer_create_info, nullptr, &buffer));
+
+	VkMemoryRequirements mem_requirements{};
+	vkGetBufferMemoryRequirements(_device, buffer, &mem_requirements);
+
+	uint32_t type_filter = mem_requirements.memoryTypeBits;
+	uint32_t memory_type;
+
+	for (uint32_t i = 0; i < _gpu_memory_properties.memoryTypeCount; i++) {
+		if ((type_filter & (1 << i)) && (_gpu_memory_properties.memoryTypes[i].propertyFlags & memory_properties) == memory_properties) {
+			memory_type = i;
+			break;
+		}
+	}
+
+	VkMemoryAllocateInfo memory_allocate_info{};
+	memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memory_allocate_info.allocationSize = mem_requirements.size;
+	memory_allocate_info.memoryTypeIndex = memory_type;
+
+	ErrorCheck(vkAllocateMemory(_device, &memory_allocate_info, nullptr, &buffer_memory));
+	ErrorCheck(vkBindBufferMemory(_device, buffer, buffer_memory, 0));
+}
+
+void Renderer::copyBuffer(VkCommandPool commandPool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+	VkCommandBufferAllocateInfo command_buffer_allocate_info{};
+	command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	command_buffer_allocate_info.commandPool = commandPool;
+	command_buffer_allocate_info.commandBufferCount = 1;
+
+	VkCommandBuffer command_buffer;
+	vkAllocateCommandBuffers(_device, &command_buffer_allocate_info, &command_buffer);
+
+	VkCommandBufferBeginInfo command_buffer_begin_info{};
+	command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info);
+
+	VkBufferCopy copy_region = {};
+	copy_region.srcOffset = 0;
+	copy_region.dstOffset = 0;
+	copy_region.size = size;
+
+	vkCmdCopyBuffer(command_buffer, srcBuffer, dstBuffer, 1, &copy_region);
+	vkEndCommandBuffer(command_buffer);
+	
+	VkSubmitInfo submit_info {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffer;
+
+	vkQueueSubmit(_queue, 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueWaitIdle(_queue);
+
+	vkFreeCommandBuffers(_device, commandPool, 1, &command_buffer);
+}
+
 void Renderer::_SetupLayersAndExtensions() {
 	//_instance_extension_list.push_back(VK_KHR_DISPLAY_EXTENSION_NAME); // Exclusive mode only
 	_instance_extension_list.push_back(VK_KHR_SURFACE_EXTENSION_NAME);

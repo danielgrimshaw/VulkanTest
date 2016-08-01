@@ -66,19 +66,19 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>D:\VulkanSDK\1.0.13.0\Include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Installers\Programming\OpenGL\glm-0.9.7.1\glm;D:\VulkanSDK\1.0.13.0\Include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\VulkanSDK\1.0.13.0\Bin32;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>D:\VulkanSDK\1.0.13.0\Include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Installers\Programming\OpenGL\glm-0.9.7.1\glm;D:\VulkanSDK\1.0.13.0\Include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\VulkanSDK\1.0.13.0\Bin32;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\VulkanSDK\1.0.13.0\Include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Installers\Programming\OpenGL\glm-0.9.7.1\glm;D:\VulkanSDK\1.0.13.0\Include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\VulkanSDK\1.0.13.0\Bin;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>D:\VulkanSDK\1.0.13.0\Include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Installers\Programming\OpenGL\glm-0.9.7.1\glm;D:\VulkanSDK\1.0.13.0\Include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\VulkanSDK\1.0.13.0\Bin;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -146,6 +146,11 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="Window.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GLSL Shaders\compileShaders.bat" />
+    <None Include="GLSL Shaders\Shader.frag" />
+    <None Include="GLSL Shaders\Shader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

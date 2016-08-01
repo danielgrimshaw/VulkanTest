@@ -76,6 +76,9 @@ public:
 	const std::vector<VkFramebuffer> getSwapchainFramebuffers() const;
 	const VkPipeline getGraphicsPipeline() const;
 
+	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_properties, VkBuffer & buffer, VkDeviceMemory & buffer_memory);
+	void copyBuffer(VkCommandPool commandPool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
 private:
 	void _SetupLayersAndExtensions();
 
