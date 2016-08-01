@@ -90,6 +90,10 @@ const VkPhysicalDeviceProperties & Renderer::getPhysicalDeviceProperties() const
 	return _gpu_properties;
 }
 
+const VkPhysicalDeviceMemoryProperties & Renderer::getPhysicalDeviceMemoryProperties() const {
+	return _gpu_memory_properties;
+}
+
 const Window * Renderer::getWindow() const {
 	return _window;
 }
@@ -156,6 +160,7 @@ void Renderer::_InitDevice() {
 
 		_gpu = gpu_list[0]; // Get the first available list
 		vkGetPhysicalDeviceProperties(_gpu, &_gpu_properties);
+		vkGetPhysicalDeviceMemoryProperties(_gpu, &_gpu_memory_properties);
 	}
 	
 	{
@@ -473,12 +478,15 @@ void Renderer::_InitGraphicsPipeline() {
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = { vert_shader_stage_create_info, frag_shader_stage_create_info };
 
+	VkVertexInputBindingDescription binding_description = Vertex::getBindingDescription();
+	std::vector<VkVertexInputAttributeDescription> attribute_description = Vertex::getAttributeDescriptions();
+
 	VkPipelineVertexInputStateCreateInfo vertex_input_info_create_info {};
 	vertex_input_info_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertex_input_info_create_info.vertexBindingDescriptionCount = 0;
-	vertex_input_info_create_info.pVertexBindingDescriptions = nullptr;
-	vertex_input_info_create_info.vertexAttributeDescriptionCount = 0;
-	vertex_input_info_create_info.pVertexAttributeDescriptions = nullptr;
+	vertex_input_info_create_info.vertexBindingDescriptionCount = 1;
+	vertex_input_info_create_info.pVertexBindingDescriptions = &binding_description;
+	vertex_input_info_create_info.vertexAttributeDescriptionCount = 1;
+	vertex_input_info_create_info.pVertexAttributeDescriptions = attribute_description.data();
 
 	VkPipelineInputAssemblyStateCreateInfo pipeline_input_assembly_state_create_info {};
 	pipeline_input_assembly_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

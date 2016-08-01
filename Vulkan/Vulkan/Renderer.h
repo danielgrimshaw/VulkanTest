@@ -22,6 +22,36 @@
 
 #include <vector>
 
+#include <glm/glm.hpp>
+
+struct Vertex {
+	glm::vec2 pos;
+	glm::vec3 color;
+
+	static VkVertexInputBindingDescription getBindingDescription() {
+		VkVertexInputBindingDescription binding_description {};
+		binding_description.binding = 0;
+		binding_description.stride = sizeof(Vertex);
+		binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		return binding_description;
+	}
+
+	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
+		std::vector<VkVertexInputAttributeDescription> attribute_descriptions(2);
+		attribute_descriptions[0].binding = 0;
+		attribute_descriptions[0].location = 0;
+		attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+		attribute_descriptions[0].offset = offsetof(Vertex, pos);
+		attribute_descriptions[1].binding = 0;
+		attribute_descriptions[1].location = 1;
+		attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attribute_descriptions[1].offset = offsetof(Vertex, color);
+
+		return attribute_descriptions;
+	}
+};
+
 class Window;
 
 class Renderer
@@ -40,6 +70,7 @@ public:
 	const VkQueue getQueue() const;
 	const uint32_t getGraphicsFamilyIndex() const;
 	const VkPhysicalDeviceProperties & getPhysicalDeviceProperties() const;
+	const VkPhysicalDeviceMemoryProperties & getPhysicalDeviceMemoryProperties() const;
 	const Window * getWindow() const;
 	const VkRenderPass getRenderPass() const;
 	const std::vector<VkFramebuffer> getSwapchainFramebuffers() const;
@@ -70,6 +101,7 @@ private:
 	VkInstance _instance = VK_NULL_HANDLE;
 	VkPhysicalDevice _gpu = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties _gpu_properties = {};
+	VkPhysicalDeviceMemoryProperties _gpu_memory_properties = {};
 	VkDevice _device = VK_NULL_HANDLE;
 	VkQueue _queue = VK_NULL_HANDLE;
 	VkRenderPass _render_pass;

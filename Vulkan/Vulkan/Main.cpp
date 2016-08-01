@@ -20,6 +20,12 @@
 #include "Window.h"
 #include "util.h"
 
+const std::vector<Vertex> vertices = {
+	{ { 0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+	{ { 0.5f, 0.5f }, { 0.0f, 1.0f, 0.0f } },
+	{ { -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } }
+};
+
 int main(void) {
 	Renderer r;
 
@@ -33,6 +39,43 @@ int main(void) {
 	command_pool_create_info.flags = 0;
 
 	ErrorCheck(vkCreateCommandPool(r.getDevice(), &command_pool_create_info, nullptr, &command_pool));
+
+	VkBuffer vertex_buffer;
+	VkDeviceMemory vertex_buffer_memory;
+
+	VkBufferCreateInfo buffer_create_info {};
+	buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buffer_create_info.size = sizeof(vertices[0]) * vertices.size();
+	buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	ErrorCheck(vkCreateBuffer(r.getDevice(), &buffer_create_info, nullptr, &vertex_buffer));
+
+	VkMemoryRequirements mem_requirements {};
+	vkGetBufferMemoryRequirements(r.getDevice(), vertex_buffer, &mem_requirements);
+
+	uint32_t type_filter = mem_requirements.memoryTypeBits;
+	VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	uint32_t memory_type;
+
+	for (uint32_t i = 0; i < r.getPhysicalDeviceMemoryProperties().memoryTypeCount; i++) {
+		if ((type_filter & (1 << i)) && (r.getPhysicalDeviceMemoryProperties().memoryTypes[i].propertyFlags & memory_properties) == memory_properties) {
+			memory_type = i;
+			break;
+		}
+	}
+
+	VkMemoryAllocateInfo memory_allocate_info {};
+	memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memory_allocate_info.allocationSize = mem_requirements.size;
+	memory_allocate_info.memoryTypeIndex = memory_type;
+
+	void * data;
+	ErrorCheck(vkAllocateMemory(r.getDevice(), &memory_allocate_info, nullptr, &vertex_buffer_memory));
+	ErrorCheck(vkBindBufferMemory(r.getDevice(), vertex_buffer, vertex_buffer_memory, 0));
+	ErrorCheck(vkMapMemory(r.getDevice(), vertex_buffer_memory, 0, buffer_create_info.size, 0, &data));
+	memcpy(data, vertices.data(), (size_t)buffer_create_info.size);
+	vkUnmapMemory(r.getDevice(), vertex_buffer_memory);
 
 	std::vector<VkCommandBuffer> command_buffers(r.getSwapchainFramebuffers().size());
 
@@ -66,6 +109,12 @@ int main(void) {
 
 		vkCmdBeginRenderPass(command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, r.getGraphicsPipeline());
+
+		VkBuffer vertex_buffers[] = { vertex_buffer };
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, vertex_buffers, offsets);
+
 		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
 		vkCmdEndRenderPass(command_buffers[i]);
 
@@ -135,6 +184,10 @@ int main(void) {
 	vkDestroySemaphore(r.getDevice(), render_finished, nullptr);
 	render_finished = nullptr;
 	vkFreeCommandBuffers(r.getDevice(), command_pool, (uint32_t) command_buffers.size(), command_buffers.data());
+	vkFreeMemory(r.getDevice(), vertex_buffer_memory, nullptr);
+	vertex_buffer_memory = nullptr;
+	vkDestroyBuffer(r.getDevice(), vertex_buffer, nullptr);
+	vertex_buffer = nullptr;
 	vkDestroyCommandPool(r.getDevice(), command_pool, nullptr);
 	command_pool = nullptr;
 
