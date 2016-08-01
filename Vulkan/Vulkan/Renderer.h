@@ -40,6 +40,10 @@ public:
 	const VkQueue getQueue() const;
 	const uint32_t getGraphicsFamilyIndex() const;
 	const VkPhysicalDeviceProperties & getPhysicalDeviceProperties() const;
+	const Window * getWindow() const;
+	const VkRenderPass getRenderPass() const;
+	const std::vector<VkFramebuffer> getSwapchainFramebuffers() const;
+	const VkPipeline getGraphicsPipeline() const;
 
 private:
 	void _SetupLayersAndExtensions();
@@ -54,11 +58,23 @@ private:
 	void _InitDebug();
 	void _DeInitDebug();
 
+	void _InitGraphicsPipeline();
+	void _DeInitGraphicsPipeline();
+
+	void _InitRenderPass();
+	void _DeInitRenderPass();
+
+	void _InitFramebuffers();
+	void _DeInitFramebuffers();
+
 	VkInstance _instance = VK_NULL_HANDLE;
 	VkPhysicalDevice _gpu = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties _gpu_properties = {};
 	VkDevice _device = VK_NULL_HANDLE;
 	VkQueue _queue = VK_NULL_HANDLE;
+	VkRenderPass _render_pass;
+	VkPipeline _graphics_pipeline;
+	std::vector<VkFramebuffer> _swapchain_framebuffers;
 
 	uint32_t _graphics_family_index = 0;
 

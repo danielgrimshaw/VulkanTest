@@ -33,6 +33,14 @@ public:
 	void close();
 	bool update();
 
+	const uint32_t getWidth() const;
+	const uint32_t getHeight() const;
+	const VkSurfaceCapabilitiesKHR getSurfaceCapabilities() const;
+	const VkSurfaceFormatKHR getSurfaceFormat() const;
+	const VkSwapchainKHR getSwapchain() const;
+	const std::vector<VkImage> & getSwapchainImages() const;
+	const std::vector<VkImageView> & getSwapchainImageViews() const;
+
 private:
 	void _InitOSWindow();
 	void _DeInitOSWindow();

@@ -18,9 +18,10 @@
 
 #pragma once
 
-#include <iostream>
-#include <assert.h>
+#include <fstream>
 
 #include "Platform.h"
 
 void ErrorCheck(VkResult result);
+
+std::vector<char> readFile(const std::string & filename);

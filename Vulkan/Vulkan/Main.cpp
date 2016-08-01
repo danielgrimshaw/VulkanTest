@@ -17,128 +17,126 @@
 */
 
 #include "Renderer.h"
+#include "Window.h"
+#include "util.h"
 
 int main(void) {
 	Renderer r;
 
 	r.openWindow(800, 600, "Vulkan Test");
 
-	while (r.run()) {
-
-	}
-
-	/*
-	VkDevice device = r.getDevice();
-	VkQueue queue = r.getQueue();
-
-	VkFence fence;
-	VkFenceCreateInfo fence_create_info {};
-	fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-	vkCreateFence(device, &fence_create_info, nullptr, &fence);
-
-	VkSemaphore semaphore;
-	VkSemaphoreCreateInfo semaphore_create_info {};
-	semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	vkCreateSemaphore(device, &semaphore_create_info, nullptr, &semaphore);
-
 	VkCommandPool command_pool;
-	
-	VkCommandPoolCreateInfo pool_create_info {};
-	pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	pool_create_info.queueFamilyIndex = r.getGraphicsFamilyIndex();
-	pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	
-	vkCreateCommandPool(device, &pool_create_info, nullptr, &command_pool);
 
-	VkCommandBuffer command_buffer[2];
+	VkCommandPoolCreateInfo command_pool_create_info {};
+	command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	command_pool_create_info.queueFamilyIndex = r.getGraphicsFamilyIndex();
+	command_pool_create_info.flags = 0;
+
+	ErrorCheck(vkCreateCommandPool(r.getDevice(), &command_pool_create_info, nullptr, &command_pool));
+
+	std::vector<VkCommandBuffer> command_buffers(r.getSwapchainFramebuffers().size());
 
 	VkCommandBufferAllocateInfo command_buffer_allocate_info {};
 	command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	command_buffer_allocate_info.commandPool = command_pool;
-	command_buffer_allocate_info.commandBufferCount = 2;
 	command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	command_buffer_allocate_info.commandBufferCount = (uint32_t)command_buffers.size();
 
-	vkAllocateCommandBuffers(device, &command_buffer_allocate_info, command_buffer);
+	ErrorCheck(vkAllocateCommandBuffers(r.getDevice(), &command_buffer_allocate_info, command_buffers.data()));
 
-	{
-		VkCommandBufferBeginInfo begin_info{};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	for (size_t i = 0; i < command_buffers.size(); i++) {
+		VkCommandBufferBeginInfo command_buffer_begin_info {};
+		command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		command_buffer_begin_info.pInheritanceInfo = nullptr;
 
-		vkBeginCommandBuffer(command_buffer[0], &begin_info);
+		vkBeginCommandBuffer(command_buffers[i], &command_buffer_begin_info);
 
-		vkCmdPipelineBarrier(command_buffer[0],
-			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-			0,
-			0, nullptr,
-			0, nullptr,
-			0, nullptr);
+		VkClearValue clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-		VkViewport viewport{};
-		viewport.maxDepth = 1.0f;
-		viewport.minDepth = 0.0f;
-		viewport.width = 512;
-		viewport.height = 512;
-		viewport.x = 0;
-		viewport.y = 0;
+		VkRenderPassBeginInfo render_pass_begin_info{};
+		render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		render_pass_begin_info.renderPass = r.getRenderPass();
+		render_pass_begin_info.framebuffer = r.getSwapchainFramebuffers()[i];
+		render_pass_begin_info.renderArea.offset = { 0, 0 };
+		render_pass_begin_info.renderArea.extent.width = r.getWindow()->getWidth();
+		render_pass_begin_info.renderArea.extent.height = r.getWindow()->getHeight();
+		render_pass_begin_info.clearValueCount = 1;
+		render_pass_begin_info.pClearValues = &clear_color;
 
-		vkCmdSetViewport(command_buffer[0], 0, 1, &viewport);
+		vkCmdBeginRenderPass(command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, r.getGraphicsPipeline());
+		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+		vkCmdEndRenderPass(command_buffers[i]);
 
-		vkEndCommandBuffer(command_buffer[0]);
+		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
 	}
 
-	{
-		VkCommandBufferBeginInfo begin_info{};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	VkSemaphore image_available;
+	VkSemaphore render_finished;
 
-		vkBeginCommandBuffer(command_buffer[1], &begin_info);
+	VkSemaphoreCreateInfo semaphore_create_info {};
+	semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		VkViewport viewport{};
-		viewport.maxDepth = 1.0f;
-		viewport.minDepth = 0.0f;
-		viewport.width = 512;
-		viewport.height = 512;
-		viewport.x = 0;
-		viewport.y = 0;
-
-		vkCmdSetViewport(command_buffer[1], 0, 1, &viewport);
-
-		vkEndCommandBuffer(command_buffer[1]);
-	}
-
-	{
-		VkSubmitInfo submit_info{};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.commandBufferCount = 1;
-		submit_info.pCommandBuffers = &command_buffer[0];
-		submit_info.signalSemaphoreCount = 1;
-		submit_info.pSignalSemaphores = &semaphore;
-
-		vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE);
-	}
-
-	{
-		VkPipelineStageFlags flags[] = { VK_PIPELINE_STAGE_ALL_COMMANDS_BIT };
-		VkSubmitInfo submit_info{};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.commandBufferCount = 1;
-		submit_info.pCommandBuffers = &command_buffer[1];
-		submit_info.waitSemaphoreCount = 1;
-		submit_info.pWaitSemaphores = &semaphore;
-		submit_info.pWaitDstStageMask = flags;
-
-		vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE);
-	}
-
-	vkQueueWaitIdle(queue); // Wait for GPU
-	//vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+	ErrorCheck(vkCreateSemaphore(r.getDevice(), &semaphore_create_info, nullptr, &image_available));
+	ErrorCheck(vkCreateSemaphore(r.getDevice(), &semaphore_create_info, nullptr, &render_finished));
 	
-	vkDestroyCommandPool(device, command_pool, nullptr);
-	vkDestroyFence(device, fence, nullptr);
-	vkDestroySemaphore(device, semaphore, nullptr);
-	*/
+	while (r.run()) { // main loop
+		uint32_t image_index;
+		vkAcquireNextImageKHR(r.getDevice(), r.getWindow()->getSwapchain(), UINT64_MAX, image_available, VK_NULL_HANDLE, &image_index);
+
+		VkSemaphore wait_semaphores[] = { image_available };
+		VkSemaphore signal_semaphores[] = { render_finished };
+
+		VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+		VkSubmitInfo submit_info {};
+		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submit_info.waitSemaphoreCount = 1;
+		submit_info.pWaitSemaphores = wait_semaphores;
+		submit_info.pWaitDstStageMask = wait_stages;
+		submit_info.commandBufferCount = 1;
+		submit_info.pCommandBuffers = &command_buffers[image_index];
+		submit_info.signalSemaphoreCount = 1;
+		submit_info.pSignalSemaphores = signal_semaphores;
+		
+		ErrorCheck(vkQueueSubmit(r.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
+
+		VkSubpassDependency subpass_dependency {};
+		subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		subpass_dependency.dstSubpass = 0;
+		subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		subpass_dependency.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+		VkRenderPassCreateInfo render_pass_create_info {};
+		render_pass_create_info.dependencyCount = 1;
+		render_pass_create_info.pDependencies = &subpass_dependency;
+
+		VkSwapchainKHR swapchains[] = { r.getWindow()->getSwapchain() };
+
+		VkPresentInfoKHR present_info {};
+		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present_info.waitSemaphoreCount = 1;
+		present_info.pWaitSemaphores = signal_semaphores;
+		present_info.swapchainCount = 1;
+		present_info.pSwapchains = swapchains;
+		present_info.pImageIndices = &image_index;
+		present_info.pResults = nullptr;
+
+		ErrorCheck(vkQueuePresentKHR(r.getQueue(), &present_info));
+	}
+
+	vkQueueWaitIdle(r.getQueue());
+
+	vkDestroySemaphore(r.getDevice(), image_available, nullptr);
+	image_available = nullptr;
+	vkDestroySemaphore(r.getDevice(), render_finished, nullptr);
+	render_finished = nullptr;
+	vkFreeCommandBuffers(r.getDevice(), command_pool, (uint32_t) command_buffers.size(), command_buffers.data());
+	vkDestroyCommandPool(r.getDevice(), command_pool, nullptr);
+	command_pool = nullptr;
 
 	return 0;
 }

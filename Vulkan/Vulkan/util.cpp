@@ -16,6 +16,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <assert.h>
+#include <cstdio>
+
 #include "util.h"
 #include "BUILD_OPTIONS.h"
 
@@ -92,3 +98,21 @@ void ErrorCheck(VkResult result) {
 void ErrorCheck(VkResult result) {};
 
 #endif //BUILD_ENABLE_VULKAN_RUNTIME_DEBUG
+
+std::vector<char> readFile(const std::string & filename) {
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open()) {
+		throw std::runtime_error("Failed to open file!");
+	}
+
+	size_t fileSize = (size_t)file.tellg();
+	std::vector<char> buffer(fileSize);
+
+	file.seekg(0);
+	file.read(buffer.data(), fileSize);
+
+	file.close();
+
+	return buffer;
+}

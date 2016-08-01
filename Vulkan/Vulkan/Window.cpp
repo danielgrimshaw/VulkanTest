@@ -52,6 +52,34 @@ bool Window::update() {
 	return _window_should_run;
 }
 
+const uint32_t Window::getWidth() const {
+	return _surface_size_x;
+}
+
+const uint32_t Window::getHeight() const {
+	return _surface_size_y;
+}
+
+const VkSurfaceCapabilitiesKHR Window::getSurfaceCapabilities() const {
+	return _surface_capabilities;
+}
+
+const VkSurfaceFormatKHR Window::getSurfaceFormat() const {
+	return _surface_format;
+}
+
+const VkSwapchainKHR Window::getSwapchain() const {
+	return _swapchain;
+}
+
+const std::vector<VkImage> & Window::getSwapchainImages() const {
+	return _swapchain_images;
+}
+
+const std::vector<VkImageView> & Window::getSwapchainImageViews() const {
+	return _swapchain_image_views;
+}
+
 void Window::_InitSurface() {
 	_InitOSSurface();
 
