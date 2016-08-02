@@ -22,6 +22,10 @@
 #include "Window.h"
 #include "Renderer.h"
 #include <assert.h>
+#include <iostream>
+#include <chrono>
+
+#include <ctime>
 
 #if VK_USE_PLATFORM_WIN32_KHR
 
@@ -115,12 +119,24 @@ void Window::_DeInitOSWindow() {
 	UnregisterClass(_win32_class_name.c_str(), _win32_instance);
 }
 
+#if BUILD_ENABLE_FRAMERATE
+std::clock_t last_time = std::clock();
+#endif
+
 void Window::_UpdateOSWindow() {
 	MSG msg;
 	if (PeekMessage(&msg, _win32_window, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
+#if BUILD_ENABLE_FRAMERATE //TODO
+	std::clock_t diff = std::clock() - last_time;
+	if (diff == 0)
+		std::cout<<"1000+"<<std::endl;
+	else
+		std::cout<<1.0/(diff/1000.0)<<std::endl;
+	last_time = std::clock();
+#endif
 }
 
 void Window::_InitOSSurface() {
