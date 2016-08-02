@@ -21,6 +21,7 @@
 #include "Platform.h"
 
 #include <vector>
+#include <array>
 
 #include <glm/glm.hpp>
 
@@ -37,8 +38,8 @@ struct Vertex {
 		return binding_description;
 	}
 
-	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
-		std::vector<VkVertexInputAttributeDescription> attribute_descriptions(2);
+	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+		std::array<VkVertexInputAttributeDescription, 2> attribute_descriptions;
 		attribute_descriptions[0].binding = 0;
 		attribute_descriptions[0].location = 0;
 		attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;

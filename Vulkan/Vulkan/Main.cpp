@@ -21,9 +21,15 @@
 #include "util.h"
 
 const std::vector<Vertex> vertices = {
-	{ { 0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-	{ { 0.5f, 0.5f }, { 0.0f, 1.0f, 0.0f } },
-	{ { -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } }
+	{ { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+	{ { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
+	{ { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
+	{ { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } }
+};
+
+const std::vector<uint16_t> indices = {
+	0, 1, 2,
+	2, 3, 0
 };
 
 int main(void) {
@@ -45,20 +51,39 @@ int main(void) {
 	VkDeviceMemory vertex_buffer_memory;
 	VkDeviceSize vertex_buffer_size = sizeof(vertices[0]) * vertices.size();
 
-	VkBuffer staging_buffer;
-	VkDeviceMemory staging_buffer_memory;
+	VkBuffer vertex_staging_buffer;
+	VkDeviceMemory vertex_staging_buffer_memory;
 
-	r.createBuffer(vertex_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+	r.createBuffer(vertex_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertex_staging_buffer, vertex_staging_buffer_memory);
 
 	void * data;
-	ErrorCheck(vkMapMemory(r.getDevice(), staging_buffer_memory, 0, vertex_buffer_size, 0, &data));
+	ErrorCheck(vkMapMemory(r.getDevice(), vertex_staging_buffer_memory, 0, vertex_buffer_size, 0, &data));
 	memcpy(data, vertices.data(), (size_t)vertex_buffer_size);
-	vkUnmapMemory(r.getDevice(), staging_buffer_memory);
+	vkUnmapMemory(r.getDevice(), vertex_staging_buffer_memory);
 
 	r.createBuffer(vertex_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertex_buffer, vertex_buffer_memory);
 
 	// Copy staging buffer into vertex buffer
-	r.copyBuffer(command_pool, staging_buffer, vertex_buffer, vertex_buffer_size);
+	r.copyBuffer(command_pool, vertex_staging_buffer, vertex_buffer, vertex_buffer_size);
+
+	// Create index buffer
+	VkBuffer index_buffer;
+	VkDeviceMemory index_buffer_memory;
+	VkDeviceSize index_buffer_size = sizeof(indices[0]) * indices.size();
+
+	VkBuffer index_staging_buffer;
+	VkDeviceMemory index_staging_buffer_memory;
+
+	r.createBuffer(index_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, index_staging_buffer, index_staging_buffer_memory);
+	
+	ErrorCheck(vkMapMemory(r.getDevice(), index_staging_buffer_memory, 0, index_buffer_size, 0, &data));
+	memcpy(data, indices.data(), (size_t)index_buffer_size);
+	vkUnmapMemory(r.getDevice(), index_staging_buffer_memory);
+
+	r.createBuffer(index_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, index_buffer, index_buffer_memory);
+
+	// Copy staging buffer into index buffer
+	r.copyBuffer(command_pool, index_staging_buffer, index_buffer, index_buffer_size);
 
 	// Create Command Buffers
 	std::vector<VkCommandBuffer> command_buffers(r.getSwapchainFramebuffers().size());
@@ -99,7 +124,9 @@ int main(void) {
 
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, vertex_buffers, offsets);
 
-		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+		vkCmdBindIndexBuffer(command_buffers[i], index_buffer, 0, VK_INDEX_TYPE_UINT16);
+
+		vkCmdDrawIndexed(command_buffers[i], indices.size(), 1, 0, 0, 0);
 		vkCmdEndRenderPass(command_buffers[i]);
 
 		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
@@ -168,14 +195,22 @@ int main(void) {
 	vkDestroySemaphore(r.getDevice(), render_finished, nullptr);
 	render_finished = nullptr;
 	vkFreeCommandBuffers(r.getDevice(), command_pool, (uint32_t) command_buffers.size(), command_buffers.data());
+	vkFreeMemory(r.getDevice(), index_buffer_memory, nullptr);
+	index_buffer_memory = nullptr;
+	vkFreeMemory(r.getDevice(), index_staging_buffer_memory, nullptr);
+	index_staging_buffer_memory = nullptr;
 	vkFreeMemory(r.getDevice(), vertex_buffer_memory, nullptr);
 	vertex_buffer_memory = nullptr;
-	vkFreeMemory(r.getDevice(), staging_buffer_memory, nullptr);
-	staging_buffer_memory = nullptr;
+	vkFreeMemory(r.getDevice(), vertex_staging_buffer_memory, nullptr);
+	vertex_staging_buffer_memory = nullptr;
+	vkDestroyBuffer(r.getDevice(), index_buffer, nullptr);
+	index_buffer = nullptr;
+	vkDestroyBuffer(r.getDevice(), index_staging_buffer, nullptr);
+	index_staging_buffer = nullptr;
 	vkDestroyBuffer(r.getDevice(), vertex_buffer, nullptr);
 	vertex_buffer = nullptr;
-	vkDestroyBuffer(r.getDevice(), staging_buffer, nullptr);
-	staging_buffer = nullptr;
+	vkDestroyBuffer(r.getDevice(), vertex_staging_buffer, nullptr);
+	vertex_staging_buffer = nullptr;
 	vkDestroyCommandPool(r.getDevice(), command_pool, nullptr);
 	command_pool = nullptr;
 
