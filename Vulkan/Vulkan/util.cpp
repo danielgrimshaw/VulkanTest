@@ -114,7 +114,5 @@ std::vector<char> readFile(const std::string & filename) {
 
 	file.close();
 
-	std::cout << buffer.data() << std::endl;
-
 	return buffer;
 }

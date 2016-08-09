@@ -53,6 +53,12 @@ struct Vertex {
 	}
 };
 
+struct UniformBufferObject { // UBO
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 projection;
+};
+
 class Window;
 
 class Renderer
@@ -75,7 +81,10 @@ public:
 	const Window * getWindow() const;
 	const VkRenderPass getRenderPass() const;
 	const std::vector<VkFramebuffer> getSwapchainFramebuffers() const;
+	const VkPipelineLayout getPipelineLayout() const;
 	const VkPipeline getGraphicsPipeline() const;
+	const VkDescriptorSetLayout getDescriptorSetLayout() const;
+	const VkDescriptorPool getDescriptorPool() const;
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_properties, VkBuffer & buffer, VkDeviceMemory & buffer_memory);
 	void copyBuffer(VkCommandPool commandPool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -102,12 +111,23 @@ private:
 	void _InitFramebuffers();
 	void _DeInitFramebuffers();
 
+	void _InitDescriptorSetLayout();
+	void _DeInitDescriptorSetLayout();
+
+	void _InitDescriptorPool();
+	void _DeInitDescriptorPool();
+
 	VkInstance _instance = VK_NULL_HANDLE;
 	VkPhysicalDevice _gpu = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties _gpu_properties = {};
 	VkPhysicalDeviceMemoryProperties _gpu_memory_properties = {};
 	VkDevice _device = VK_NULL_HANDLE;
 	VkQueue _queue = VK_NULL_HANDLE;
+	VkShaderModule _vert_module;
+	VkShaderModule _frag_module;
+	VkDescriptorSetLayout _descriptor_set_layout;
+	VkDescriptorPool _descriptor_pool;
+	VkPipelineLayout _pipeline_layout;
 	VkRenderPass _render_pass;
 	VkPipeline _graphics_pipeline;
 	std::vector<VkFramebuffer> _swapchain_framebuffers;

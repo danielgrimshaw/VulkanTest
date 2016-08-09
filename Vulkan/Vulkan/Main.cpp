@@ -20,6 +20,13 @@
 #include "Window.h"
 #include "util.h"
 
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <chrono>
+#include <iostream>
+
 const std::vector<Vertex> vertices = {
 	{ { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
 	{ { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
@@ -85,7 +92,50 @@ int main(void) {
 	// Copy staging buffer into index buffer
 	r.copyBuffer(command_pool, index_staging_buffer, index_buffer, index_buffer_size);
 
-	// Create Command Buffers
+	// Create uniform buffer
+	VkBuffer uniform_staging_buffer;
+	VkDeviceMemory uniform_staging_buffer_memory;
+	VkBuffer uniform_buffer;
+	VkDeviceMemory uniform_buffer_memory;
+
+	VkDeviceSize uniform_buffer_size = sizeof(UniformBufferObject);
+
+	r.createBuffer(uniform_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniform_staging_buffer, uniform_staging_buffer_memory);
+	r.createBuffer(uniform_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uniform_buffer, uniform_buffer_memory);
+
+	// Create descriptor set
+	VkDescriptorSet descriptor_set;
+
+	VkDescriptorSetLayout layouts[] = { r.getDescriptorSetLayout() };
+	VkDescriptorSetAllocateInfo descriptor_set_allocate_info {};
+	descriptor_set_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptor_set_allocate_info.descriptorPool = r.getDescriptorPool();
+	descriptor_set_allocate_info.descriptorSetCount = 1;
+	descriptor_set_allocate_info.pSetLayouts = layouts;
+
+	ErrorCheck(vkAllocateDescriptorSets(r.getDevice(), &descriptor_set_allocate_info, &descriptor_set));
+
+	// Configure descriptors
+	VkDescriptorBufferInfo buffer_info {};
+	buffer_info.buffer = uniform_buffer;
+	buffer_info.offset = 0;
+	buffer_info.range = sizeof(UniformBufferObject);
+
+	// Info for writing descriptor
+	VkWriteDescriptorSet descriptor_write {};
+	descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptor_write.dstSet = descriptor_set;
+	descriptor_write.dstBinding = 0;
+	descriptor_write.dstArrayElement = 0;
+	descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptor_write.descriptorCount = 1;
+	descriptor_write.pBufferInfo = &buffer_info; // Used if descriptor is buffer data
+	descriptor_write.pImageInfo = nullptr; // Used if descriptor is image data
+	descriptor_write.pTexelBufferView = nullptr; // Used if descriptor is buffer views
+
+	vkUpdateDescriptorSets(r.getDevice(), 1, &descriptor_write, 0, nullptr);
+
+	// Create command buffers
 	std::vector<VkCommandBuffer> command_buffers(r.getSwapchainFramebuffers().size());
 
 	VkCommandBufferAllocateInfo command_buffer_allocate_info = {};
@@ -126,6 +176,8 @@ int main(void) {
 
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffer, 0, VK_INDEX_TYPE_UINT16);
 
+		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, r.getPipelineLayout(), 0, 1, &descriptor_set, 0, nullptr);
+
 		vkCmdDrawIndexed(command_buffers[i], indices.size(), 1, 0, 0, 0);
 		vkCmdEndRenderPass(command_buffers[i]);
 
@@ -141,7 +193,28 @@ int main(void) {
 	ErrorCheck(vkCreateSemaphore(r.getDevice(), &semaphore_create_info, nullptr, &image_available));
 	ErrorCheck(vkCreateSemaphore(r.getDevice(), &semaphore_create_info, nullptr, &render_finished));
 	
+	auto start_time = std::chrono::high_resolution_clock::now();
+
 	while (r.run()) { // main loop
+		// Update Uniform Buffer
+		auto current_time = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count() / 1000.0f;
+		
+		UniformBufferObject ubo {};
+		ubo.model = glm::rotate(glm::mat4(), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.projection = glm::perspective(glm::radians(45.0f), (float)(r.getWindow()->getSurfaceCapabilities().currentExtent.width) / (float)(r.getWindow()->getSurfaceCapabilities().currentExtent.height), 0.1f, 10.0f);
+
+		ubo.projection[1][1] *= -1.0f; // GLM is for OpenGL, the Y-axis needs to be flipped for Vulkan
+
+		void * data;
+		vkMapMemory(r.getDevice(), uniform_staging_buffer_memory, 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(r.getDevice(), uniform_staging_buffer_memory);
+
+		r.copyBuffer(command_pool, uniform_staging_buffer, uniform_buffer, sizeof(ubo));
+
+		// Main Draw
 		uint32_t image_index;
 		vkAcquireNextImageKHR(r.getDevice(), r.getWindow()->getSwapchain(), UINT64_MAX, image_available, VK_NULL_HANDLE, &image_index);
 
@@ -195,6 +268,10 @@ int main(void) {
 	vkDestroySemaphore(r.getDevice(), render_finished, nullptr);
 	render_finished = nullptr;
 	vkFreeCommandBuffers(r.getDevice(), command_pool, (uint32_t) command_buffers.size(), command_buffers.data());
+	vkFreeMemory(r.getDevice(), uniform_buffer_memory, nullptr);
+	uniform_buffer_memory = nullptr;
+	vkFreeMemory(r.getDevice(), uniform_staging_buffer_memory, nullptr);
+	uniform_staging_buffer_memory = nullptr;
 	vkFreeMemory(r.getDevice(), index_buffer_memory, nullptr);
 	index_buffer_memory = nullptr;
 	vkFreeMemory(r.getDevice(), index_staging_buffer_memory, nullptr);
@@ -203,6 +280,10 @@ int main(void) {
 	vertex_buffer_memory = nullptr;
 	vkFreeMemory(r.getDevice(), vertex_staging_buffer_memory, nullptr);
 	vertex_staging_buffer_memory = nullptr;
+	vkDestroyBuffer(r.getDevice(), uniform_buffer, nullptr);
+	uniform_buffer = nullptr;
+	vkDestroyBuffer(r.getDevice(), uniform_staging_buffer, nullptr);
+	uniform_staging_buffer = nullptr;
 	vkDestroyBuffer(r.getDevice(), index_buffer, nullptr);
 	index_buffer = nullptr;
 	vkDestroyBuffer(r.getDevice(), index_staging_buffer, nullptr);

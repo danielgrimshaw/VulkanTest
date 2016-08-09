@@ -44,6 +44,8 @@ Renderer::Renderer() {
 Renderer::~Renderer() {
 	_DeInitFramebuffers();
 	_DeInitGraphicsPipeline();
+	_DeInitDescriptorSetLayout();
+	_DeInitDescriptorPool();
 	_DeInitRenderPass();
 	delete _window;
 
@@ -55,6 +57,8 @@ Renderer::~Renderer() {
 Window * Renderer::openWindow(uint32_t size_x, uint32_t size_y, std::string name) {
 	_window = new Window(this, size_x, size_y, name);
 	_InitRenderPass();
+	_InitDescriptorSetLayout();
+	_InitDescriptorPool();
 	_InitGraphicsPipeline();
 	_InitFramebuffers();
 	return _window;
@@ -107,8 +111,20 @@ const std::vector<VkFramebuffer> Renderer::getSwapchainFramebuffers() const {
 	return _swapchain_framebuffers;
 }
 
+const VkPipelineLayout Renderer::getPipelineLayout() const {
+	return _pipeline_layout;
+}
+
 const VkPipeline Renderer::getGraphicsPipeline() const {
 	return _graphics_pipeline;
+}
+
+const VkDescriptorSetLayout Renderer::getDescriptorSetLayout() const {
+	return _descriptor_set_layout;
+}
+
+const VkDescriptorPool Renderer::getDescriptorPool() const {
+	return _descriptor_pool;
 }
 
 void Renderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_properties, VkBuffer & buffer, VkDeviceMemory & buffer_memory) {
@@ -506,9 +522,6 @@ void Renderer::_DeInitRenderPass() {
 }
 
 void Renderer::_InitGraphicsPipeline() {
-	VkShaderModule vert_module;
-	VkShaderModule frag_module;
-
 	{ // Create Vertex Shader Module
 		std::vector<char> vert_shader_code = readFile("vert.spv");
 
@@ -517,7 +530,7 @@ void Renderer::_InitGraphicsPipeline() {
 		shader_module_create_info.codeSize = vert_shader_code.size();
 		shader_module_create_info.pCode = (uint32_t *)vert_shader_code.data();
 
-		ErrorCheck(vkCreateShaderModule(_device, &shader_module_create_info, nullptr, &vert_module));
+		ErrorCheck(vkCreateShaderModule(_device, &shader_module_create_info, nullptr, &_vert_module));
 	}
 
 	{ // Create Fragment Shader Module
@@ -528,19 +541,19 @@ void Renderer::_InitGraphicsPipeline() {
 		shader_module_create_info.codeSize = frag_shader_code.size();
 		shader_module_create_info.pCode = (uint32_t *)frag_shader_code.data();
 
-		ErrorCheck(vkCreateShaderModule(_device, &shader_module_create_info, nullptr, &frag_module));
+		ErrorCheck(vkCreateShaderModule(_device, &shader_module_create_info, nullptr, &_frag_module));
 	}
 
 	VkPipelineShaderStageCreateInfo vert_shader_stage_create_info {};
 	vert_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vert_shader_stage_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vert_shader_stage_create_info.module = vert_module;
+	vert_shader_stage_create_info.module = _vert_module;
 	vert_shader_stage_create_info.pName = "main";
 	
 	VkPipelineShaderStageCreateInfo frag_shader_stage_create_info {};
 	frag_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	frag_shader_stage_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	frag_shader_stage_create_info.module = frag_module;
+	frag_shader_stage_create_info.module = _frag_module;
 	frag_shader_stage_create_info.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shader_stages[] = { vert_shader_stage_create_info, frag_shader_stage_create_info };
@@ -587,7 +600,7 @@ void Renderer::_InitGraphicsPipeline() {
 	rasterization_state_create_info.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterization_state_create_info.lineWidth = 1.0f;
 	rasterization_state_create_info.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterization_state_create_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterization_state_create_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterization_state_create_info.depthBiasEnable = VK_FALSE;
 	rasterization_state_create_info.depthBiasConstantFactor = 0.0f;
 	rasterization_state_create_info.depthBiasClamp = 0.0f;
@@ -623,16 +636,15 @@ void Renderer::_InitGraphicsPipeline() {
 	pipeline_color_blend_state_create_info.blendConstants[2] = 0.0f;
 	pipeline_color_blend_state_create_info.blendConstants[3] = 0.0f;
 
-	VkPipelineLayout pipeline_layout;
-
+	VkDescriptorSetLayout descriptor_set_layouts[] = { _descriptor_set_layout };
 	VkPipelineLayoutCreateInfo pipeline_layout_create_info {};
 	pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipeline_layout_create_info.setLayoutCount = 0;
-	pipeline_layout_create_info.pSetLayouts = nullptr;
+	pipeline_layout_create_info.setLayoutCount = 1;
+	pipeline_layout_create_info.pSetLayouts = descriptor_set_layouts;
 	pipeline_layout_create_info.pushConstantRangeCount = 0;
 	pipeline_layout_create_info.pPushConstantRanges = 0;
 
-	ErrorCheck(vkCreatePipelineLayout(_device, &pipeline_layout_create_info, nullptr, &pipeline_layout));
+	ErrorCheck(vkCreatePipelineLayout(_device, &pipeline_layout_create_info, nullptr, &_pipeline_layout));
 
 	VkGraphicsPipelineCreateInfo graphics_pipeline_create_info {};
 	graphics_pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -646,24 +658,22 @@ void Renderer::_InitGraphicsPipeline() {
 	graphics_pipeline_create_info.pDepthStencilState = nullptr;
 	graphics_pipeline_create_info.pColorBlendState = &pipeline_color_blend_state_create_info;
 	graphics_pipeline_create_info.pDynamicState = nullptr;
-	graphics_pipeline_create_info.layout = pipeline_layout;
+	graphics_pipeline_create_info.layout = _pipeline_layout;
 	graphics_pipeline_create_info.renderPass = _render_pass;
 	graphics_pipeline_create_info.subpass = 0;
 	graphics_pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
 	graphics_pipeline_create_info.basePipelineIndex = -1;
 
 	ErrorCheck(vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &graphics_pipeline_create_info, nullptr, &_graphics_pipeline));
-
-	// Might need to be moved to the destroy function
-	vkDestroyPipelineLayout(_device, pipeline_layout, nullptr);
-	pipeline_layout = nullptr;
-	vkDestroyShaderModule(_device, frag_module, nullptr);
-	frag_module = nullptr;
-	vkDestroyShaderModule(_device, vert_module, nullptr);
-	vert_module = nullptr;
 }
 
 void Renderer::_DeInitGraphicsPipeline() {
+	vkDestroyPipelineLayout(_device, _pipeline_layout, nullptr);
+	_pipeline_layout = nullptr;
+	vkDestroyShaderModule(_device, _frag_module, nullptr);
+	_frag_module = nullptr;
+	vkDestroyShaderModule(_device, _vert_module, nullptr);
+	_vert_module = nullptr;
 	vkDestroyPipeline(_device, _graphics_pipeline, nullptr);
 	_graphics_pipeline = nullptr;
 }
@@ -694,4 +704,44 @@ void Renderer::_DeInitFramebuffers() {
 		vkDestroyFramebuffer(_device, _swapchain_framebuffers[i], nullptr);
 		_swapchain_framebuffers[i] = nullptr;
 	}
+}
+
+void Renderer::_InitDescriptorSetLayout() {
+	VkDescriptorSetLayoutBinding ubo_layout_binding {};
+	ubo_layout_binding.binding = 0;
+	ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	ubo_layout_binding.descriptorCount = 1;
+	ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	ubo_layout_binding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info {};
+	descriptor_set_layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptor_set_layout_create_info.bindingCount = 1;
+	descriptor_set_layout_create_info.pBindings = &ubo_layout_binding;
+
+	ErrorCheck(vkCreateDescriptorSetLayout(_device, &descriptor_set_layout_create_info, nullptr, &_descriptor_set_layout));
+}
+
+void Renderer::_DeInitDescriptorSetLayout() {
+	vkDestroyDescriptorSetLayout(_device, _descriptor_set_layout, nullptr);
+	_descriptor_set_layout = nullptr;
+}
+
+void Renderer::_InitDescriptorPool() {
+	VkDescriptorPoolSize pool_size {};
+	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_size.descriptorCount = 1;
+
+	VkDescriptorPoolCreateInfo pool_create_info {};
+	pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_create_info.poolSizeCount = 1;
+	pool_create_info.pPoolSizes = &pool_size;
+	pool_create_info.maxSets = 1;
+
+	ErrorCheck(vkCreateDescriptorPool(_device, &pool_create_info, nullptr, &_descriptor_pool));
+}
+
+void Renderer::_DeInitDescriptorPool() {
+	vkDestroyDescriptorPool(_device, _descriptor_pool, nullptr);
+	_descriptor_pool = nullptr;
 }
