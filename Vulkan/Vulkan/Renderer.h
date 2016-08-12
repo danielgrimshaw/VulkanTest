@@ -26,7 +26,7 @@
 #include <glm/glm.hpp>
 
 struct Vertex {
-	glm::vec2 pos;
+	glm::vec3 pos;
 	glm::vec3 color;
 	glm::vec2 texCoord;
 
@@ -43,7 +43,7 @@ struct Vertex {
 		std::array<VkVertexInputAttributeDescription, 3> attribute_descriptions;
 		attribute_descriptions[0].binding = 0;
 		attribute_descriptions[0].location = 0;
-		attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+		attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attribute_descriptions[0].offset = offsetof(Vertex, pos);
 
 		attribute_descriptions[1].binding = 0;
@@ -93,11 +93,16 @@ public:
 	const VkDescriptorSetLayout getDescriptorSetLayout() const;
 	const VkDescriptorPool getDescriptorPool() const;
 
+	void makeFramebuffers(VkImageView depthImageView);
+
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_properties, VkBuffer & buffer, VkDeviceMemory & buffer_memory);
 	void copyBuffer(VkCommandPool commandPool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage & image, VkDeviceMemory & imageMemory);
 	void transitionImageLayout(VkCommandPool pool, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout);
 	void copyImage(VkCommandPool pool, VkImage srcImage, VkImage dstImage, uint32_t width, uint32_t height);
+	void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView & imageView);
+
+	VkFormat findSupportedFormat(const std::vector<VkFormat> & candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
 private:
 	void _SetupLayersAndExtensions();
@@ -118,7 +123,7 @@ private:
 	void _InitRenderPass();
 	void _DeInitRenderPass();
 
-	void _InitFramebuffers();
+	void _InitFramebuffers(VkImageView depthImageView);
 	void _DeInitFramebuffers();
 
 	void _InitDescriptorSetLayout();

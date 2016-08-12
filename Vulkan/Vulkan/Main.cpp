@@ -21,6 +21,7 @@
 #include "util.h"
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -31,15 +32,23 @@
 #include <iostream>
 
 const std::vector<Vertex> vertices = {
-	{ { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
-	{ { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
-	{ { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } }
+	{ { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
+	{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+	{ { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
+	{ { -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+
+	{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
+	{ { 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+	{ { 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
+	{ { -0.5f, 0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } }
 };
 
 const std::vector<uint16_t> indices = {
 	0, 1, 2,
-	2, 3, 0
+	2, 3, 0,
+
+	4, 5, 6,
+	6, 7, 4
 };
 
 int main(void) {
@@ -55,6 +64,24 @@ int main(void) {
 	command_pool_create_info.flags = 0;
 
 	ErrorCheck(vkCreateCommandPool(r.getDevice(), &command_pool_create_info, nullptr, &command_pool));
+
+	// Create depth resources
+	VkImage depth_image;
+	VkDeviceMemory depth_image_memory;
+	VkImageView depth_image_view;
+
+	VkFormat depth_format = r.findSupportedFormat(
+		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+	);
+
+	r.createImage(r.getWindow()->getWidth(), r.getWindow()->getHeight(), depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
+	r.createImageView(depth_image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, depth_image_view);
+
+	r.transitionImageLayout(command_pool, depth_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+	r.makeFramebuffers(depth_image_view);
 
 	// Create texture image
 	int tex_width, tex_height, tex_channels;
@@ -90,18 +117,7 @@ int main(void) {
 	// Create texture image view
 	VkImageView texture_image_view;
 
-	VkImageViewCreateInfo view_info {};
-	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	view_info.image = texture_image;
-	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	view_info.format = VK_FORMAT_R8G8B8A8_UNORM;
-	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	view_info.subresourceRange.baseMipLevel = 0;
-	view_info.subresourceRange.levelCount = 1;
-	view_info.subresourceRange.baseArrayLayer = 0;
-	view_info.subresourceRange.layerCount = 1;
-
-	ErrorCheck(vkCreateImageView(r.getDevice(), &view_info, nullptr, &texture_image_view));
+	r.createImageView(texture_image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, texture_image_view);
 
 	// Create Texture Sampler
 	VkSampler texture_sampler;
@@ -245,7 +261,9 @@ int main(void) {
 
 		vkBeginCommandBuffer(command_buffers[i], &command_buffer_begin_info);
 
-		VkClearValue clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		std::array<VkClearValue, 2> clear_values = {};
+		clear_values[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clear_values[1].depthStencil = { 1.0f, 0 };
 
 		VkRenderPassBeginInfo render_pass_begin_info{};
 		render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -254,8 +272,8 @@ int main(void) {
 		render_pass_begin_info.renderArea.offset = { 0, 0 };
 		render_pass_begin_info.renderArea.extent.width = r.getWindow()->getWidth();
 		render_pass_begin_info.renderArea.extent.height = r.getWindow()->getHeight();
-		render_pass_begin_info.clearValueCount = 1;
-		render_pass_begin_info.pClearValues = &clear_color;
+		render_pass_begin_info.clearValueCount = clear_values.size();
+		render_pass_begin_info.pClearValues = clear_values.data();
 
 		vkCmdBeginRenderPass(command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, r.getGraphicsPipeline());
@@ -395,6 +413,12 @@ int main(void) {
 	texture_image_memory = nullptr;
 	vkDestroyImage(r.getDevice(), texture_image, nullptr);
 	texture_image = nullptr;
+	vkDestroyImageView(r.getDevice(), depth_image_view, nullptr);
+	depth_image_view = nullptr;
+	vkFreeMemory(r.getDevice(), depth_image_memory, nullptr);
+	depth_image_memory = nullptr;
+	vkDestroyImage(r.getDevice(), depth_image, nullptr);
+	depth_image = nullptr;
 	vkDestroyCommandPool(r.getDevice(), command_pool, nullptr);
 	command_pool = nullptr;
 

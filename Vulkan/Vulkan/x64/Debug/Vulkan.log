@@ -1,11 +1,13 @@
-﻿Build started 8/12/2016 12:21:29 PM.
+﻿Build started 8/12/2016 4:42:54 PM.
      1>Project "D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Vulkan\Vulkan.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /Od /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt Renderer.cpp Window_win32.cpp util.cpp
          Renderer.cpp
-     1>Renderer.cpp(661): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(820): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(840): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(664): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(723): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(860): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(895): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Renderer.cpp(915): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
          Generating Code...
          Compiling...
          util.cpp
@@ -22,4 +24,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:02.92
+Time Elapsed 00:00:03.12

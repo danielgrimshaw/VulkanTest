@@ -80,6 +80,21 @@ const std::vector<VkImageView> & Window::getSwapchainImageViews() const {
 	return _swapchain_image_views;
 }
 
+void Window::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView & imageView) {
+	VkImageViewCreateInfo view_info {};
+	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	view_info.image = image;
+	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	view_info.format = format;
+	view_info.subresourceRange.aspectMask = aspectFlags;
+	view_info.subresourceRange.baseMipLevel = 0;
+	view_info.subresourceRange.levelCount = 1;
+	view_info.subresourceRange.baseArrayLayer = 0;
+	view_info.subresourceRange.layerCount = 1;
+
+	ErrorCheck(vkCreateImageView(_renderer->getDevice(), &view_info, nullptr, &imageView));
+}
+
 void Window::_InitSurface() {
 	_InitOSSurface();
 
@@ -180,22 +195,7 @@ void Window::_InitSwapchainImages() {
 	ErrorCheck(vkGetSwapchainImagesKHR(_renderer->getDevice(), _swapchain, &_swapchain_image_count, _swapchain_images.data()));
 
 	for (uint32_t i = 0; i < _swapchain_image_count; i++) {
-		VkImageViewCreateInfo image_view_create_info {};
-		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		image_view_create_info.image = _swapchain_images[i];
-		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		image_view_create_info.format = _surface_format.format;
-		image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_R;
-		image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_G;
-		image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_B;
-		image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_A;
-		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		image_view_create_info.subresourceRange.baseMipLevel = 0;
-		image_view_create_info.subresourceRange.levelCount = 1;
-		image_view_create_info.subresourceRange.baseArrayLayer = 0;
-		image_view_create_info.subresourceRange.layerCount = 1;
-
-		ErrorCheck(vkCreateImageView(_renderer->getDevice(), &image_view_create_info, nullptr, &_swapchain_image_views[i]));
+		createImageView(_swapchain_images[i], _surface_format.format, VK_IMAGE_ASPECT_COLOR_BIT, _swapchain_image_views[i]);
 	}
 }
 

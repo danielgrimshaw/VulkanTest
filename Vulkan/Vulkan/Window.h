@@ -41,6 +41,8 @@ public:
 	const std::vector<VkImage> & getSwapchainImages() const;
 	const std::vector<VkImageView> & getSwapchainImageViews() const;
 
+	void createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView & imageView);
+
 private:
 	void _InitOSWindow();
 	void _DeInitOSWindow();
