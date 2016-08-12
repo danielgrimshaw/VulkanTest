@@ -159,20 +159,7 @@ void Renderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemor
 }
 
 void Renderer::copyBuffer(VkCommandPool commandPool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-	VkCommandBufferAllocateInfo command_buffer_allocate_info{};
-	command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	command_buffer_allocate_info.commandPool = commandPool;
-	command_buffer_allocate_info.commandBufferCount = 1;
-
-	VkCommandBuffer command_buffer;
-	vkAllocateCommandBuffers(_device, &command_buffer_allocate_info, &command_buffer);
-
-	VkCommandBufferBeginInfo command_buffer_begin_info{};
-	command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info);
+	VkCommandBuffer command_buffer = _BeginSingleTimeCommands(commandPool);
 
 	VkBufferCopy copy_region = {};
 	copy_region.srcOffset = 0;
@@ -180,17 +167,123 @@ void Renderer::copyBuffer(VkCommandPool commandPool, VkBuffer srcBuffer, VkBuffe
 	copy_region.size = size;
 
 	vkCmdCopyBuffer(command_buffer, srcBuffer, dstBuffer, 1, &copy_region);
-	vkEndCommandBuffer(command_buffer);
 	
-	VkSubmitInfo submit_info {};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &command_buffer;
+	_EndSingleTimeCommands(commandPool, command_buffer);
+}
 
-	vkQueueSubmit(_queue, 1, &submit_info, VK_NULL_HANDLE);
-	vkQueueWaitIdle(_queue);
+void Renderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryProperties, VkImage & image, VkDeviceMemory & imageMemory) {
+	VkImageCreateInfo image_create_info{};
+	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	image_create_info.imageType = VK_IMAGE_TYPE_2D;
+	image_create_info.extent.width = width;
+	image_create_info.extent.height = height;
+	image_create_info.extent.depth = 1;
+	image_create_info.mipLevels = 1;
+	image_create_info.arrayLayers = 1;
+	image_create_info.format = format;
+	image_create_info.tiling = tiling;
+	image_create_info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+	image_create_info.usage = usage;
+	image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+	image_create_info.flags = 0;
 
-	vkFreeCommandBuffers(_device, commandPool, 1, &command_buffer);
+	ErrorCheck(vkCreateImage(_device, &image_create_info, nullptr, &image));
+
+	VkMemoryRequirements mem_reqs;
+	vkGetImageMemoryRequirements(_device, image, &mem_reqs);
+
+	VkMemoryAllocateInfo mem_alloc_info{};
+	mem_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	mem_alloc_info.allocationSize = mem_reqs.size;
+
+	uint32_t type_filter = mem_reqs.memoryTypeBits;
+	uint32_t memory_type;
+
+	for (uint32_t i = 0; i < _gpu_memory_properties.memoryTypeCount; i++) {
+		if ((type_filter & (1 << i)) && (_gpu_memory_properties.memoryTypes[i].propertyFlags & memoryProperties) == memoryProperties) {
+			memory_type = i;
+			break;
+		}
+	}
+	mem_alloc_info.memoryTypeIndex = memory_type;
+
+	ErrorCheck(vkAllocateMemory(_device, &mem_alloc_info, nullptr, &imageMemory));
+	vkBindImageMemory(_device, image, imageMemory, 0);
+}
+
+void Renderer::transitionImageLayout(VkCommandPool pool, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
+	VkCommandBuffer command_buffer = _BeginSingleTimeCommands(pool);
+
+	VkImageMemoryBarrier barrier {};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.oldLayout = oldLayout;
+	barrier.newLayout = newLayout;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = image;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
+
+	if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	}
+	else {
+		throw std::invalid_argument("Unsupported layout transition.");
+	}
+
+	vkCmdPipelineBarrier(
+		command_buffer,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &barrier
+	);
+
+	_EndSingleTimeCommands(pool, command_buffer);
+}
+
+void Renderer::copyImage(VkCommandPool pool, VkImage srcImage, VkImage dstImage, uint32_t width, uint32_t height) {
+	VkCommandBuffer command_buffer = _BeginSingleTimeCommands(pool);
+
+	VkImageSubresourceLayers subresource {};
+	subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subresource.baseArrayLayer = 0;
+	subresource.mipLevel = 0;
+	subresource.layerCount = 1;
+
+	VkImageCopy region {};
+	region.srcSubresource = subresource;
+	region.dstSubresource = subresource;
+	region.srcOffset = { 0, 0, 0 };
+	region.dstOffset = { 0, 0, 0 };
+	region.extent.width = width;
+	region.extent.height = height;
+	region.extent.depth = 1;
+
+	vkCmdCopyImage(
+		command_buffer,
+		srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1, &region
+	);
+
+	_EndSingleTimeCommands(pool, command_buffer);
 }
 
 void Renderer::_SetupLayersAndExtensions() {
@@ -559,7 +652,7 @@ void Renderer::_InitGraphicsPipeline() {
 	VkPipelineShaderStageCreateInfo shader_stages[] = { vert_shader_stage_create_info, frag_shader_stage_create_info };
 
 	VkVertexInputBindingDescription binding_description = Vertex::getBindingDescription();
-	std::array<VkVertexInputAttributeDescription, 2> attribute_descriptions = Vertex::getAttributeDescriptions();
+	std::array<VkVertexInputAttributeDescription, 3> attribute_descriptions = Vertex::getAttributeDescriptions();
 
 	VkPipelineVertexInputStateCreateInfo vertex_input_info_create_info {};
 	vertex_input_info_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -714,10 +807,18 @@ void Renderer::_InitDescriptorSetLayout() {
 	ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	ubo_layout_binding.pImmutableSamplers = nullptr;
 
+	VkDescriptorSetLayoutBinding sampler_layout_binding {};
+	sampler_layout_binding.binding = 1;
+	sampler_layout_binding.descriptorCount = 1;
+	sampler_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	sampler_layout_binding.pImmutableSamplers = nullptr;
+	sampler_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { ubo_layout_binding, sampler_layout_binding };
 	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info {};
 	descriptor_set_layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptor_set_layout_create_info.bindingCount = 1;
-	descriptor_set_layout_create_info.pBindings = &ubo_layout_binding;
+	descriptor_set_layout_create_info.bindingCount = bindings.size();
+	descriptor_set_layout_create_info.pBindings = bindings.data();
 
 	ErrorCheck(vkCreateDescriptorSetLayout(_device, &descriptor_set_layout_create_info, nullptr, &_descriptor_set_layout));
 }
@@ -728,14 +829,16 @@ void Renderer::_DeInitDescriptorSetLayout() {
 }
 
 void Renderer::_InitDescriptorPool() {
-	VkDescriptorPoolSize pool_size {};
-	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_size.descriptorCount = 1;
+	std::array<VkDescriptorPoolSize, 2> pool_sizes {};
+	pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_sizes[0].descriptorCount = 1;
+	pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	pool_sizes[1].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo pool_create_info {};
 	pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	pool_create_info.poolSizeCount = 1;
-	pool_create_info.pPoolSizes = &pool_size;
+	pool_create_info.poolSizeCount = pool_sizes.size();
+	pool_create_info.pPoolSizes = pool_sizes.data();
 	pool_create_info.maxSets = 1;
 
 	ErrorCheck(vkCreateDescriptorPool(_device, &pool_create_info, nullptr, &_descriptor_pool));
@@ -744,4 +847,37 @@ void Renderer::_InitDescriptorPool() {
 void Renderer::_DeInitDescriptorPool() {
 	vkDestroyDescriptorPool(_device, _descriptor_pool, nullptr);
 	_descriptor_pool = nullptr;
+}
+
+VkCommandBuffer Renderer::_BeginSingleTimeCommands(VkCommandPool pool) {
+	VkCommandBufferAllocateInfo allocate_info {};
+	allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocate_info.commandPool = pool;
+	allocate_info.commandBufferCount = 1;
+
+	VkCommandBuffer command_buffer;
+	ErrorCheck(vkAllocateCommandBuffers(_device, &allocate_info, &command_buffer));
+
+	VkCommandBufferBeginInfo begin_info {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	ErrorCheck(vkBeginCommandBuffer(command_buffer, &begin_info));
+
+	return command_buffer;
+}
+
+void Renderer::_EndSingleTimeCommands(VkCommandPool pool, VkCommandBuffer commandBuffer) {
+	ErrorCheck(vkEndCommandBuffer(commandBuffer));
+
+	VkSubmitInfo submit_info {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &commandBuffer;
+
+	ErrorCheck(vkQueueSubmit(_queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueWaitIdle(_queue));
+
+	vkFreeCommandBuffers(_device, pool, 1, &commandBuffer);
 }

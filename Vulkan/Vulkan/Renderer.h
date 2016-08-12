@@ -28,6 +28,7 @@
 struct Vertex {
 	glm::vec2 pos;
 	glm::vec3 color;
+	glm::vec2 texCoord;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
 		VkVertexInputBindingDescription binding_description {};
@@ -38,16 +39,22 @@ struct Vertex {
 		return binding_description;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-		std::array<VkVertexInputAttributeDescription, 2> attribute_descriptions;
+	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+		std::array<VkVertexInputAttributeDescription, 3> attribute_descriptions;
 		attribute_descriptions[0].binding = 0;
 		attribute_descriptions[0].location = 0;
 		attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
 		attribute_descriptions[0].offset = offsetof(Vertex, pos);
+
 		attribute_descriptions[1].binding = 0;
 		attribute_descriptions[1].location = 1;
 		attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attribute_descriptions[1].offset = offsetof(Vertex, color);
+
+		attribute_descriptions[2].binding = 0;
+		attribute_descriptions[2].location = 2;
+		attribute_descriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+		attribute_descriptions[2].offset = offsetof(Vertex, texCoord);
 
 		return attribute_descriptions;
 	}
@@ -88,6 +95,9 @@ public:
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_properties, VkBuffer & buffer, VkDeviceMemory & buffer_memory);
 	void copyBuffer(VkCommandPool commandPool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage & image, VkDeviceMemory & imageMemory);
+	void transitionImageLayout(VkCommandPool pool, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout);
+	void copyImage(VkCommandPool pool, VkImage srcImage, VkImage dstImage, uint32_t width, uint32_t height);
 
 private:
 	void _SetupLayersAndExtensions();
@@ -116,6 +126,9 @@ private:
 
 	void _InitDescriptorPool();
 	void _DeInitDescriptorPool();
+
+	VkCommandBuffer _BeginSingleTimeCommands(VkCommandPool pool);
+	void _EndSingleTimeCommands(VkCommandPool pool, VkCommandBuffer commandBuffer);
 
 	VkInstance _instance = VK_NULL_HANDLE;
 	VkPhysicalDevice _gpu = VK_NULL_HANDLE;

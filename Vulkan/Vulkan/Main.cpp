@@ -24,14 +24,17 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <chrono>
 #include <iostream>
 
 const std::vector<Vertex> vertices = {
-	{ { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-	{ { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
-	{ { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } }
+	{ { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
+	{ { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+	{ { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
+	{ { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } }
 };
 
 const std::vector<uint16_t> indices = {
@@ -52,6 +55,79 @@ int main(void) {
 	command_pool_create_info.flags = 0;
 
 	ErrorCheck(vkCreateCommandPool(r.getDevice(), &command_pool_create_info, nullptr, &command_pool));
+
+	// Create texture image
+	int tex_width, tex_height, tex_channels;
+	stbi_uc * pixels = stbi_load("textures/texture.jpg", &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+	VkDeviceSize image_size = tex_width * tex_height * 4;
+
+	if (!pixels) {
+		throw std::runtime_error("failed to load texture image!");
+	}
+
+	VkImage staging_image;
+	VkDeviceMemory staging_image_memory;
+	VkImage texture_image;
+	VkDeviceMemory texture_image_memory;
+
+	r.createImage(tex_width, tex_height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_image, staging_image_memory);
+
+	void * data;
+	ErrorCheck(vkMapMemory(r.getDevice(), staging_image_memory, 0, image_size, 0, &data));
+	memcpy(data, pixels, (size_t)image_size);
+	vkUnmapMemory(r.getDevice(), staging_image_memory);
+	stbi_image_free(pixels);
+
+	r.createImage(tex_width, tex_height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture_image, texture_image_memory);
+
+	// Copy staging image to texture image
+	r.transitionImageLayout(command_pool, staging_image, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	r.transitionImageLayout(command_pool, texture_image, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	r.copyImage(command_pool, staging_image, texture_image, tex_width, tex_height);
+
+	r.transitionImageLayout(command_pool, texture_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	// Create texture image view
+	VkImageView texture_image_view;
+
+	VkImageViewCreateInfo view_info {};
+	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	view_info.image = texture_image;
+	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	view_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	view_info.subresourceRange.baseMipLevel = 0;
+	view_info.subresourceRange.levelCount = 1;
+	view_info.subresourceRange.baseArrayLayer = 0;
+	view_info.subresourceRange.layerCount = 1;
+
+	ErrorCheck(vkCreateImageView(r.getDevice(), &view_info, nullptr, &texture_image_view));
+
+	// Create Texture Sampler
+	VkSampler texture_sampler;
+
+	VkSamplerCreateInfo sampler_info;
+	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_info.magFilter = VK_FILTER_LINEAR;
+	sampler_info.minFilter = VK_FILTER_LINEAR;
+	sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.anisotropyEnable = VK_TRUE;
+	sampler_info.maxAnisotropy = 16;
+	sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_info.unnormalizedCoordinates = VK_FALSE;
+	sampler_info.compareEnable = VK_FALSE;
+	sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
+	sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler_info.mipLodBias = 0.0f;
+	sampler_info.minLod = 0.0f;
+	sampler_info.maxLod = 0.0f;
+	sampler_info.pNext = NULL;
+	sampler_info.flags = 0;
+
+	ErrorCheck(vkCreateSampler(r.getDevice(), &sampler_info, nullptr, &texture_sampler));
+
 	
 	// Create Vertex Buffer
 	VkBuffer vertex_buffer;
@@ -63,7 +139,7 @@ int main(void) {
 
 	r.createBuffer(vertex_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertex_staging_buffer, vertex_staging_buffer_memory);
 
-	void * data;
+	// data is already defined and is now re-used
 	ErrorCheck(vkMapMemory(r.getDevice(), vertex_staging_buffer_memory, 0, vertex_buffer_size, 0, &data));
 	memcpy(data, vertices.data(), (size_t)vertex_buffer_size);
 	vkUnmapMemory(r.getDevice(), vertex_staging_buffer_memory);
@@ -121,19 +197,34 @@ int main(void) {
 	buffer_info.offset = 0;
 	buffer_info.range = sizeof(UniformBufferObject);
 
-	// Info for writing descriptor
-	VkWriteDescriptorSet descriptor_write {};
-	descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptor_write.dstSet = descriptor_set;
-	descriptor_write.dstBinding = 0;
-	descriptor_write.dstArrayElement = 0;
-	descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptor_write.descriptorCount = 1;
-	descriptor_write.pBufferInfo = &buffer_info; // Used if descriptor is buffer data
-	descriptor_write.pImageInfo = nullptr; // Used if descriptor is image data
-	descriptor_write.pTexelBufferView = nullptr; // Used if descriptor is buffer views
+	VkDescriptorImageInfo image_info {};
+	image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	image_info.imageView = texture_image_view;
+	image_info.sampler = texture_sampler;
 
-	vkUpdateDescriptorSets(r.getDevice(), 1, &descriptor_write, 0, nullptr);
+	// Info for writing descriptor
+	std::array<VkWriteDescriptorSet, 2> descriptor_writes {};
+	descriptor_writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptor_writes[0].dstSet = descriptor_set;
+	descriptor_writes[0].dstBinding = 0;
+	descriptor_writes[0].dstArrayElement = 0;
+	descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptor_writes[0].descriptorCount = 1;
+	descriptor_writes[0].pBufferInfo = &buffer_info; // Used if descriptor is buffer data
+	descriptor_writes[0].pImageInfo = nullptr; // Used if descriptor is image data
+	descriptor_writes[0].pTexelBufferView = nullptr; // Used if descriptor is buffer views
+
+	descriptor_writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptor_writes[1].dstSet = descriptor_set;
+	descriptor_writes[1].dstBinding = 1;
+	descriptor_writes[1].dstArrayElement = 0;
+	descriptor_writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptor_writes[1].descriptorCount = 1;
+	descriptor_writes[1].pBufferInfo = nullptr;
+	descriptor_writes[1].pImageInfo = &image_info;
+	descriptor_writes[1].pTexelBufferView = nullptr;
+
+	vkUpdateDescriptorSets(r.getDevice(), descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
 	// Create command buffers
 	std::vector<VkCommandBuffer> command_buffers(r.getSwapchainFramebuffers().size());
@@ -292,6 +383,18 @@ int main(void) {
 	vertex_buffer = nullptr;
 	vkDestroyBuffer(r.getDevice(), vertex_staging_buffer, nullptr);
 	vertex_staging_buffer = nullptr;
+	vkDestroySampler(r.getDevice(), texture_sampler, nullptr);
+	texture_sampler = nullptr;
+	vkDestroyImageView(r.getDevice(), texture_image_view, nullptr);
+	texture_image_view = nullptr;
+	vkFreeMemory(r.getDevice(), staging_image_memory, nullptr);
+	staging_image_memory = nullptr;
+	vkDestroyImage(r.getDevice(), staging_image, nullptr);
+	staging_image = nullptr;
+	vkFreeMemory(r.getDevice(), texture_image_memory, nullptr);
+	texture_image_memory = nullptr;
+	vkDestroyImage(r.getDevice(), texture_image, nullptr);
+	texture_image = nullptr;
 	vkDestroyCommandPool(r.getDevice(), command_pool, nullptr);
 	command_pool = nullptr;
 
