@@ -19,6 +19,7 @@
 #include "Renderer.h"
 #include "Window.h"
 #include "util.h"
+#include "BUILD_OPTIONS.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -28,8 +29,17 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#if BUILD_ENABLE_MODEL
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+#endif
+
 #include <chrono>
 #include <iostream>
+
+#if BUILD_ENABLE_MODEL
+#include <unordered_map>
+#else
 
 const std::vector<Vertex> vertices = {
 	{ { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
@@ -43,17 +53,30 @@ const std::vector<Vertex> vertices = {
 	{ { -0.5f, 0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } }
 };
 
-const std::vector<uint16_t> indices = {
+const std::vector<uint32_t> indices = {
 	0, 1, 2,
 	2, 3, 0,
 
 	4, 5, 6,
 	6, 7, 4
 };
+#endif
+
+#if BUILD_ENABLE_MODEL
+const std::string MODEL_PATH = "models/chalet.obj";
+const std::string TEXTURE_PATH = "textures/chalet.jpg";
+#else
+const std::string MODEL_PATH = "";
+const std::string TEXTURE_PATH = "textures/texture.jpg";
+#endif
 
 int main(void) {
 	Renderer r;
 
+#if BUILD_ENABLE_MODEL
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
+#endif
 	r.openWindow(800, 600, "Vulkan Test");
 
 	VkCommandPool command_pool;
@@ -85,7 +108,7 @@ int main(void) {
 
 	// Create texture image
 	int tex_width, tex_height, tex_channels;
-	stbi_uc * pixels = stbi_load("textures/texture.jpg", &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+	stbi_uc * pixels = stbi_load(TEXTURE_PATH.c_str(), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
 	VkDeviceSize image_size = tex_width * tex_height * 4;
 
 	if (!pixels) {
@@ -144,6 +167,45 @@ int main(void) {
 
 	ErrorCheck(vkCreateSampler(r.getDevice(), &sampler_info, nullptr, &texture_sampler));
 
+#if BUILD_ENABLE_MODEL
+	// Load Model
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string err;
+
+	std::cout << "Loading Model" << std::endl;
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL_PATH.c_str())) {
+		throw std::runtime_error(err);
+	}
+	std::cout << "Done Loading Model" << std::endl;
+	
+	std::unordered_map<Vertex, int> unique_vertices = {};
+
+	for (const auto & shape : shapes) {
+		for (const auto & index : shape.mesh.indices) {
+			Vertex vertex {};
+
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
+			};
+
+			vertex.texCoord = {
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+			};
+
+			if (unique_vertices.count(vertex) == 0) {
+				unique_vertices[vertex] = vertices.size();
+				vertices.push_back(vertex);
+			}
+			
+			indices.push_back(unique_vertices[vertex]);
+		}
+	}
+#endif
 	
 	// Create Vertex Buffer
 	VkBuffer vertex_buffer;
@@ -283,7 +345,7 @@ int main(void) {
 
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, vertex_buffers, offsets);
 
-		vkCmdBindIndexBuffer(command_buffers[i], index_buffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindIndexBuffer(command_buffers[i], index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
 		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, r.getPipelineLayout(), 0, 1, &descriptor_set, 0, nullptr);
 

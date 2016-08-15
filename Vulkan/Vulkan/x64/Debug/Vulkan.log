@@ -1,18 +1,12 @@
-﻿Build started 8/12/2016 4:42:54 PM.
+﻿Build started 8/12/2016 5:47:46 PM.
      1>Project "D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\Vulkan\Vulkan.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
-         D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /Od /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt Renderer.cpp Window_win32.cpp util.cpp
-         Renderer.cpp
-     1>Renderer.cpp(664): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(723): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(860): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(895): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-     1>Renderer.cpp(915): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
-         Generating Code...
-         Compiling...
-         util.cpp
-         Window_win32.cpp
-         Generating Code...
+         D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /Od /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt Main.cpp
+         Main.cpp
+     1>Main.cpp(182): warning C4267: 'argument' : conversion from 'size_t' to 'unsigned int', possible loss of data
+     1>Main.cpp(281): warning C4267: 'argument' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Main.cpp(313): warning C4267: '=' : conversion from 'size_t' to 'uint32_t', possible loss of data
+     1>Main.cpp(328): warning C4267: 'argument' : conversion from 'size_t' to 'uint32_t', possible loss of data
        Link:
          D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\x64\Debug\Vulkan.exe" /INCREMENTAL /NOLOGO "vulkan-1.lib" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\x64\Debug\Vulkan.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\Programming\Github\Graphics\Vulkan\VulkanTesting\Vulkan\x64\Debug\Vulkan.lib" /MACHINE:X64 x64\Debug\Main.obj
          x64\Debug\Renderer.obj
@@ -24,4 +18,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:03.12
+Time Elapsed 00:00:03.09
