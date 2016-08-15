@@ -661,7 +661,7 @@ void Renderer::_InitRenderPass() {
 
 	VkRenderPassCreateInfo render_pass_create_info {};
 	render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_create_info.attachmentCount = attachments.size();
+	render_pass_create_info.attachmentCount = (uint32_t)attachments.size();
 	render_pass_create_info.pAttachments = attachments.data();
 	render_pass_create_info.subpassCount = 1;
 	render_pass_create_info.pSubpasses = &subpass;
@@ -720,7 +720,7 @@ void Renderer::_InitGraphicsPipeline() {
 	vertex_input_info_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertex_input_info_create_info.vertexBindingDescriptionCount = 1;
 	vertex_input_info_create_info.pVertexBindingDescriptions = &binding_description;
-	vertex_input_info_create_info.vertexAttributeDescriptionCount = attribute_descriptions.size();
+	vertex_input_info_create_info.vertexAttributeDescriptionCount = (uint32_t)attribute_descriptions.size();
 	vertex_input_info_create_info.pVertexAttributeDescriptions = attribute_descriptions.data();
 
 	VkPipelineInputAssemblyStateCreateInfo pipeline_input_assembly_state_create_info{};
@@ -857,7 +857,7 @@ void Renderer::_InitFramebuffers(VkImageView depthImageView) {
 		VkFramebufferCreateInfo framebuffer_create_info {};
 		framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebuffer_create_info.renderPass = _render_pass;
-		framebuffer_create_info.attachmentCount = attachments.size();
+		framebuffer_create_info.attachmentCount = (uint32_t)attachments.size();
 		framebuffer_create_info.pAttachments = attachments.data();
 		framebuffer_create_info.width = _window->getSurfaceCapabilities().currentExtent.width;
 		framebuffer_create_info.height = _window->getSurfaceCapabilities().currentExtent.height;
@@ -892,7 +892,7 @@ void Renderer::_InitDescriptorSetLayout() {
 	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { ubo_layout_binding, sampler_layout_binding };
 	VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info {};
 	descriptor_set_layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptor_set_layout_create_info.bindingCount = bindings.size();
+	descriptor_set_layout_create_info.bindingCount = (uint32_t)bindings.size();
 	descriptor_set_layout_create_info.pBindings = bindings.data();
 
 	ErrorCheck(vkCreateDescriptorSetLayout(_device, &descriptor_set_layout_create_info, nullptr, &_descriptor_set_layout));
@@ -912,7 +912,7 @@ void Renderer::_InitDescriptorPool() {
 
 	VkDescriptorPoolCreateInfo pool_create_info {};
 	pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	pool_create_info.poolSizeCount = pool_sizes.size();
+	pool_create_info.poolSizeCount = (uint32_t)pool_sizes.size();
 	pool_create_info.pPoolSizes = pool_sizes.data();
 	pool_create_info.maxSets = 1;
 

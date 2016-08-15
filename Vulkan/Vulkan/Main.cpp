@@ -198,7 +198,7 @@ int main(void) {
 			};
 
 			if (unique_vertices.count(vertex) == 0) {
-				unique_vertices[vertex] = vertices.size();
+				unique_vertices[vertex] = (int)vertices.size();
 				vertices.push_back(vertex);
 			}
 			
@@ -302,7 +302,7 @@ int main(void) {
 	descriptor_writes[1].pImageInfo = &image_info;
 	descriptor_writes[1].pTexelBufferView = nullptr;
 
-	vkUpdateDescriptorSets(r.getDevice(), descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
+	vkUpdateDescriptorSets(r.getDevice(), (uint32_t)descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
 	// Create command buffers
 	std::vector<VkCommandBuffer> command_buffers(r.getSwapchainFramebuffers().size());
@@ -334,7 +334,7 @@ int main(void) {
 		render_pass_begin_info.renderArea.offset = { 0, 0 };
 		render_pass_begin_info.renderArea.extent.width = r.getWindow()->getWidth();
 		render_pass_begin_info.renderArea.extent.height = r.getWindow()->getHeight();
-		render_pass_begin_info.clearValueCount = clear_values.size();
+		render_pass_begin_info.clearValueCount = (uint32_t)clear_values.size();
 		render_pass_begin_info.pClearValues = clear_values.data();
 
 		vkCmdBeginRenderPass(command_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -349,7 +349,7 @@ int main(void) {
 
 		vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, r.getPipelineLayout(), 0, 1, &descriptor_set, 0, nullptr);
 
-		vkCmdDrawIndexed(command_buffers[i], indices.size(), 1, 0, 0, 0);
+		vkCmdDrawIndexed(command_buffers[i], (uint32_t)indices.size(), 1, 0, 0, 0);
 		vkCmdEndRenderPass(command_buffers[i]);
 
 		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
