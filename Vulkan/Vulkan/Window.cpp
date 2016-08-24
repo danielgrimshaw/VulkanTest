@@ -47,8 +47,8 @@ void Window::close() {
 	_window_should_run = false;
 }
 
-bool Window::update() {
-	_UpdateOSWindow();
+bool Window::update(int * xPos, int * yPos) {
+	_UpdateOSWindow(xPos, yPos);
 	return _window_should_run;
 }
 

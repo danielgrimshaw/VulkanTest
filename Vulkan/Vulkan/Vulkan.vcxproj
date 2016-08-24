@@ -149,6 +149,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL Shaders\compileShaders.bat" />
+    <None Include="GLSL Shaders\Fractal.frag" />
     <None Include="GLSL Shaders\Shader.frag" />
     <None Include="GLSL Shaders\Shader.vert" />
   </ItemGroup>

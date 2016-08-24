@@ -31,7 +31,7 @@ public:
 	~Window();
 
 	void close();
-	bool update();
+	bool update(int * xPos, int * yPos);
 
 	const uint32_t getWidth() const;
 	const uint32_t getHeight() const;
@@ -46,7 +46,7 @@ public:
 private:
 	void _InitOSWindow();
 	void _DeInitOSWindow();
-	void _UpdateOSWindow();
+	void _UpdateOSWindow(int * xPos, int * yPos);
 	void _InitOSSurface();
 
 	void _InitSurface();

@@ -42,15 +42,15 @@
 #else
 
 const std::vector<Vertex> vertices = {
-	{ { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
-	{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
-	{ { -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+	{ { -1.0f, -1.0f, 0.0f }, { -2.0f, 1.25f, 0.0f }, { 0.0f, 0.0f } },
+	{ { 1.0f, -1.0f, 0.0f }, { 0.5f, 1.25f, 0.0f }, { 1.0f, 0.0f } },
+	{ { 1.0f, 1.0f, 0.0f }, { 0.5f, -1.25f, 0.0f }, { 1.0f, 1.0f } },
+	{ { -1.0f, 1.0f, 0.0f }, { -2.0f, -1.25f, 0.0f }, { 0.0f, 1.0f } },
 
-	{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
-	{ { 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
-	{ { -0.5f, 0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } }
+	{ { -1.0f, -1.0f, -0.5f }, { -2.0f, 1.25f, 0.0f }, { 0.0f, 0.0f } },
+	{ { 1.0f, -1.0f, -0.5f }, { 0.5f, 1.25f, 0.0f }, { 1.0f, 0.0f } },
+	{ { 1.0f, 1.0f, -0.5f }, { 0.5f, -1.25f, 0.0f }, { 1.0f, 1.0f } },
+	{ { -1.0f, 1.0f, -0.5f }, { -2.0f, -1.25f, 0.0f }, { 0.0f, 1.0f } }
 };
 
 const std::vector<uint32_t> indices = {
@@ -366,15 +366,24 @@ int main(void) {
 	
 	auto start_time = std::chrono::high_resolution_clock::now();
 
-	while (r.run()) { // main loop
+	int xPos = 1;
+	int yPos = 45;
+
+	while (r.run(&xPos, &yPos)) { // main loop
 		// Update Uniform Buffer
 		auto current_time = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count() / 1000.0f;
-		
+
+		// Get new viewing angle
+		auto height = r.getWindow()->getHeight();
+		double placeholder =  yPos - ((double)height / 2);
+		placeholder = placeholder / ((double)height / 2);
+		float angle = placeholder * 90;
+
 		UniformBufferObject ubo {};
 		ubo.model = glm::rotate(glm::mat4(), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.projection = glm::perspective(glm::radians(45.0f), (float)(r.getWindow()->getSurfaceCapabilities().currentExtent.width) / (float)(r.getWindow()->getSurfaceCapabilities().currentExtent.height), 0.1f, 10.0f);
+		ubo.view = glm::lookAt(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.projection = glm::perspective(glm::radians(angle), (float)(r.getWindow()->getSurfaceCapabilities().currentExtent.width) / (float)(r.getWindow()->getSurfaceCapabilities().currentExtent.height), 0.1f, 10.0f);
 
 		ubo.projection[1][1] *= -1.0f; // GLM is for OpenGL, the Y-axis needs to be flipped for Vulkan
 

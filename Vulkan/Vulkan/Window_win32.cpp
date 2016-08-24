@@ -29,6 +29,10 @@
 
 #if VK_USE_PLATFORM_WIN32_KHR
 
+#include <windowsx.h>
+
+int * x_pos;
+int * y_pos;
 
 LRESULT CALLBACK WindowsEventHandler(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	Window * window = reinterpret_cast<Window *>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
@@ -42,6 +46,9 @@ LRESULT CALLBACK WindowsEventHandler(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 		// Should rebuild all resources
 		// Resizing has been disabled
 		break;
+	case WM_MOUSEMOVE:
+		*x_pos = GET_X_LPARAM(lParam);
+		*y_pos = GET_Y_LPARAM(lParam);
 	default:
 		break;
 	}
@@ -123,7 +130,9 @@ void Window::_DeInitOSWindow() {
 std::clock_t last_time = std::clock();
 #endif
 
-void Window::_UpdateOSWindow() {
+void Window::_UpdateOSWindow(int * xPos, int * yPos) {
+	x_pos = xPos;
+	y_pos = yPos;
 	MSG msg;
 	if (PeekMessage(&msg, _win32_window, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&msg);

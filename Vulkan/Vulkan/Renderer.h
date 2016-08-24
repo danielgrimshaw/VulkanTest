@@ -91,7 +91,7 @@ public:
 
 	Window * openWindow(uint32_t size_x, uint32_t size_y, std::string name);
 
-	bool run();
+	bool run(int * xPos, int * yPos);
 
 	const VkInstance getInstance() const;
 	const VkPhysicalDevice getPhysicalDevice() const;

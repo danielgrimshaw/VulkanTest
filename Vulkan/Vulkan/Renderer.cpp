@@ -32,6 +32,9 @@
 #include <iostream>
 #include <sstream>
 
+const std::string VERT_PATH = "vert.spv";
+const std::string FRAG_PATH = "frag.spv";
+
 // Construction
 Renderer::Renderer() {
 	_SetupLayersAndExtensions();
@@ -63,9 +66,9 @@ Window * Renderer::openWindow(uint32_t size_x, uint32_t size_y, std::string name
 	return _window;
 }
 
-bool Renderer::run() {
+bool Renderer::run(int * xPos, int * yPos) {
 	if (nullptr != _window) {
-		return _window->update();
+		return _window->update(xPos, yPos);
 	}
 	return true;
 }
@@ -678,7 +681,7 @@ void Renderer::_DeInitRenderPass() {
 
 void Renderer::_InitGraphicsPipeline() {
 	{ // Create Vertex Shader Module
-		std::vector<char> vert_shader_code = readFile("vert.spv");
+		std::vector<char> vert_shader_code = readFile(VERT_PATH);
 
 		VkShaderModuleCreateInfo shader_module_create_info{};
 		shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -689,7 +692,7 @@ void Renderer::_InitGraphicsPipeline() {
 	}
 
 	{ // Create Fragment Shader Module
-		std::vector<char> frag_shader_code = readFile("frag.spv");
+		std::vector<char> frag_shader_code = readFile(FRAG_PATH);
 
 		VkShaderModuleCreateInfo shader_module_create_info{};
 		shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
