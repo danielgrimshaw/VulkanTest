@@ -40,5 +40,5 @@ vec4 iterate_pixel(vec2 position) {
 }
 
 void main() {
-	color = iterate_pixel(mbrot_pos.xy);
+	color = vec4(iterate_pixel(mbrot_pos.xy).rgb * texture(texSampler, fragTexCoord).rgb, 1.0);
 }
